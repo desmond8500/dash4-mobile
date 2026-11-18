@@ -32,6 +32,8 @@ import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useProjectsStore } from '@/stores/projects'
 import { mailHref, telHref } from '@/utils/links'
 import ClientLogo from '@/components/ClientLogo.vue'
+import QuoteList from '@/components/QuoteList.vue'
+import { useQuotesStore } from '@/stores/quotes'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -39,6 +41,8 @@ const store = useClientsStore()
 const requests = useClientRequestsStore()
 const projects = useProjectsStore()
 const clientProjects = computed(() => projects.ofClient(Number(props.id)))
+const quotes = useQuotesStore()
+const clientQuotes = computed(() => quotes.ofClient(Number(props.id)))
 const clientRequests = computed(() => requests.sorted.filter((r) => r.client_id === Number(props.id)))
 
 const clientId = computed(() => Number(props.id))
@@ -60,6 +64,7 @@ onMounted(() => {
   void store.load()
   void requests.load()
   void projects.load()
+  void quotes.load().then(() => quotes.refresh()).catch(() => undefined)
 })
 </script>
 
@@ -106,6 +111,8 @@ onMounted(() => {
             <IonLabel class="ion-text-wrap notes">{{ client.description }}</IonLabel>
           </IonItem>
         </IonList>
+
+        <QuoteList :quotes="clientQuotes" />
 
         <IonList v-if="clientProjects.length" inset>
           <IonListHeader><IonLabel>Projets</IonLabel></IonListHeader>

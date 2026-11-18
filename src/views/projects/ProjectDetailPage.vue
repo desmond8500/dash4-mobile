@@ -33,6 +33,8 @@ import { api } from '@/services/api'
 import { useProjectsStore } from '@/stores/projects'
 import { useSyncStore } from '@/stores/sync'
 import ClientLogo from '@/components/ClientLogo.vue'
+import QuoteList from '@/components/QuoteList.vue'
+import { useQuotesStore } from '@/stores/quotes'
 import { directionsUrl, fileSize, periodLabel, projectStatusColor } from '@/utils/projects'
 
 const props = defineProps<{ id: string }>()
@@ -42,6 +44,8 @@ const sync = useSyncStore()
 const projectId = computed(() => Number(props.id))
 const project = computed(() => store.find(projectId.value))
 const pendingNotes = computed(() => store.pendingNotes(projectId.value))
+const quotes = useQuotesStore()
+const projectQuotes = computed(() => quotes.ofProject(projectId.value))
 const route = computed(() =>
   project.value ? directionsUrl(project.value.latitude, project.value.longitude, project.value.address) : null,
 )
@@ -99,6 +103,7 @@ async function addNote(): Promise<void> {
 onMounted(async () => {
   await store.load()
   if (project.value) void loadDocuments()
+  void quotes.load().then(() => quotes.refresh()).catch(() => undefined)
 })
 </script>
 
@@ -179,6 +184,8 @@ onMounted(async () => {
             <IonLabel color="medium">Aucune note.</IonLabel>
           </IonItem>
         </IonList>
+
+        <QuoteList :quotes="projectQuotes" />
 
         <IonList v-if="(project.links ?? []).length" inset>
           <IonListHeader><IonLabel>Liens</IonLabel></IonListHeader>
