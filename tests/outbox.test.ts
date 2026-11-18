@@ -30,6 +30,13 @@ describe("file d'attente hors ligne", () => {
     expect(item.id).toMatch(/^[0-9a-f-]{36}$/)
   })
 
+  it("n'ajoute pas de client_uuid à une modification", async () => {
+    const outbox = createOutbox(memoryStore(), vi.fn())
+    const item = await outbox.enqueue({ ...action('A'), method: 'PATCH', path: 'client-requests/3', payload: { status: 'done' } })
+
+    expect(item.payload).toEqual({ status: 'done' })
+  })
+
   it('envoie les actions dans l\'ordre puis les retire de la file', async () => {
     const store = memoryStore()
     const sent: string[] = []

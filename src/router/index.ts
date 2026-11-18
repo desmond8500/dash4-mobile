@@ -28,6 +28,25 @@ export const router = createRouter({
           component: () => import('@/views/HomePage.vue'),
         },
         {
+          path: 'demandes',
+          name: 'client-requests',
+          component: () => import('@/views/requests/RequestsPage.vue'),
+          meta: { permissions: ['client_requests.view', 'client_requests.view.own'] },
+        },
+        {
+          path: 'demandes/nouvelle',
+          name: 'client-request-new',
+          component: () => import('@/views/requests/RequestFormPage.vue'),
+          meta: { permissions: ['client_requests.create'] },
+        },
+        {
+          path: 'demandes/:id(\\d+)',
+          name: 'client-request',
+          component: () => import('@/views/requests/RequestDetailPage.vue'),
+          props: true,
+          meta: { permissions: ['client_requests.view', 'client_requests.view.own'] },
+        },
+        {
           path: 'clients',
           name: 'clients',
           component: () => import('@/views/clients/ClientsPage.vue'),

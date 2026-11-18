@@ -55,3 +55,27 @@ export function pendingCreations(items: OutboxItem[], path: string): OutboxItem[
 export function plain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
+
+const PRIORITY_RANK: Record<string, number> = { high: 0, normal: 1, low: 2 }
+
+/** Demandes : urgentes d'abord, puis les plus récentes. */
+export function sortRequests<T extends { priority: { value: string }; created_at: string | null; id: number }>(
+  items: T[],
+): T[] {
+  return [...items].sort(
+    (a, b) =>
+      (PRIORITY_RANK[a.priority.value] ?? 1) - (PRIORITY_RANK[b.priority.value] ?? 1) ||
+      (b.created_at ?? '').localeCompare(a.created_at ?? '') ||
+      b.id - a.id,
+  )
+}
+
+/** Encore « Nouvelle » après le délai de relance (calculé sur le téléphone, même hors ligne). */
+export function isOverdue(
+  request: { status: { value: string }; created_at: string | null },
+  days = 2,
+  now: Date = new Date(),
+): boolean {
+  if (request.status.value !== 'new' || !request.created_at) return false
+  return now.getTime() - new Date(request.created_at).getTime() >= days * 86_400_000
+}

@@ -54,7 +54,8 @@ export function createOutbox(store: OutboxStore, send: SendFn) {
     const item: OutboxItem = {
       ...action,
       id,
-      payload: { ...action.payload, client_uuid: id },
+      // client_uuid seulement pour une création : l'API le refuse sur une modification
+      payload: action.method === 'POST' ? { ...action.payload, client_uuid: id } : { ...action.payload },
       createdAt: Date.now(),
       attempts: 0,
     }

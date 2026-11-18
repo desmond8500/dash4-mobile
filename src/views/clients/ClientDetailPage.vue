@@ -17,16 +17,26 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
-import { callOutline, cloudUploadOutline, locationOutline, mailOutline, personAddOutline } from 'ionicons/icons'
+import {
+  addCircleOutline,
+  callOutline,
+  cloudUploadOutline,
+  locationOutline,
+  mailOutline,
+  personAddOutline,
+} from 'ionicons/icons'
 import type { Contact } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
+import { useClientRequestsStore } from '@/stores/clientRequests'
 import { mailHref, telHref } from '@/utils/links'
 import ClientLogo from '@/components/ClientLogo.vue'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
 const store = useClientsStore()
+const requests = useClientRequestsStore()
+const clientRequests = computed(() => requests.sorted.filter((r) => r.client_id === Number(props.id)))
 
 const clientId = computed(() => Number(props.id))
 const client = computed(() => store.findClient(clientId.value))
@@ -43,7 +53,10 @@ function contactEmails(contact: Contact): string[] {
   return [contact.email, ...(contact.emails ?? []).map((e) => e.address)].filter((v): v is string => !!v)
 }
 
-onMounted(() => store.load())
+onMounted(() => {
+  void store.load()
+  void requests.load()
+})
 </script>
 
 <template>
@@ -87,6 +100,33 @@ onMounted(() => store.load())
           </IonItem>
           <IonItem v-if="client.description">
             <IonLabel class="ion-text-wrap notes">{{ client.description }}</IonLabel>
+          </IonItem>
+        </IonList>
+
+        <IonList v-if="auth.canAny(['client_requests.view', 'client_requests.create'])" inset>
+          <IonListHeader>
+            <IonLabel>Demandes</IonLabel>
+            <IonButton
+              v-if="auth.can('client_requests.create')"
+              :router-link="{ name: 'client-request-new', query: { client_id: client.id } }"
+            >
+              <IonIcon slot="start" :icon="addCircleOutline" />
+              Noter
+            </IonButton>
+          </IonListHeader>
+          <IonItem
+            v-for="r in clientRequests"
+            :key="r.id"
+            :router-link="{ name: 'client-request', params: { id: r.id } }"
+            detail
+          >
+            <IonLabel class="ion-text-wrap">
+              <h3>{{ r.body }}</h3>
+              <p>{{ r.status.label }} · {{ r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '' }}</p>
+            </IonLabel>
+          </IonItem>
+          <IonItem v-if="!clientRequests.length">
+            <IonLabel color="medium">Aucune demande.</IonLabel>
           </IonItem>
         </IonList>
 

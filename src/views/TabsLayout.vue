@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonBadge, IonIcon, IonLabel, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs } from '@ionic/vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { visibleTabs } from '@/tabs'
+import { useClientRequestsStore } from '@/stores/clientRequests'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
 const router = useRouter()
+const requests = useClientRequestsStore()
+
+// Compteur de l'onglet Demandes, lu dans la copie locale (fonctionne hors ligne)
+onMounted(async () => {
+  await requests.load()
+  void requests.refresh()
+})
 
 const tabs = computed(() =>
   auth.user ? visibleTabs(auth.user.account_type.value, auth.canAny) : [],
@@ -31,6 +39,9 @@ function hrefFor(name: string): string {
           <IonLabel>{{ tab.label }}</IonLabel>
           <IonBadge v-if="tab.name === 'profile' && sync.pendingCount" color="warning">
             {{ sync.pendingCount }}
+          </IonBadge>
+          <IonBadge v-if="tab.name === 'client-requests' && requests.openCount" color="primary">
+            {{ requests.openCount }}
           </IonBadge>
         </IonTabButton>
       </IonTabBar>

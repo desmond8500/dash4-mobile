@@ -1,4 +1,4 @@
-import { businessOutline, homeOutline, personCircleOutline } from 'ionicons/icons'
+import { businessOutline, chatbubblesOutline, homeOutline, personCircleOutline } from 'ionicons/icons'
 
 /**
  * Onglets du bas de l'écran, selon le type de compte et les permissions.
@@ -19,6 +19,13 @@ export interface TabEntry {
 
 export const TABS: TabEntry[] = [
   { name: 'home', label: 'Accueil', icon: homeOutline, accountTypes: ['manager', 'technician'], permissions: [] },
+  {
+    name: 'client-requests',
+    label: 'Demandes',
+    icon: chatbubblesOutline,
+    accountTypes: ['manager', 'technician'],
+    permissions: ['client_requests.view', 'client_requests.view.own'],
+  },
   {
     name: 'clients',
     label: 'Clients',
