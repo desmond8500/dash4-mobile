@@ -106,6 +106,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['invoices.view'] },
         },
         {
+          path: 'stock',
+          name: 'stock',
+          component: () => import('@/views/stock/StockPage.vue'),
+          meta: { accountTypes: ['manager'], permissions: ['stock.view'] },
+        },
+        {
+          path: 'stock/:id(\\d+)',
+          name: 'stock-article',
+          component: () => import('@/views/stock/ArticlePage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager'], permissions: ['stock.view'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),
