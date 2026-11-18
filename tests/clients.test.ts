@@ -10,7 +10,7 @@ import {
 import type { OutboxItem } from '../src/offline/outbox'
 import { visibleTabs } from '../src/tabs'
 import { buildClientPayload, buildContactPayload } from '../src/utils/forms'
-import { telHref } from '../src/utils/links'
+import { initials, telHref } from '../src/utils/links'
 
 const row = (id: number, name: string, deleted_at: string | null = null) => ({ id, name, deleted_at })
 
@@ -127,5 +127,13 @@ describe('onglet Clients', () => {
 
   it("n'apparaît jamais pour un technicien", () => {
     expect(names('technician', ['clients.view'])).toEqual(['home', 'profile'])
+  })
+})
+
+describe('logo', () => {
+  it('affiche les initiales à défaut de logo', () => {
+    expect(initials('Société Générale')).toBe('SG')
+    expect(initials('Sonatel')).toBe('SO')
+    expect(initials('')).toBe('?')
   })
 })

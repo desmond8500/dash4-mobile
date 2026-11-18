@@ -22,6 +22,7 @@ import type { Contact } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { mailHref, telHref } from '@/utils/links'
+import ClientLogo from '@/components/ClientLogo.vue'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -64,6 +65,7 @@ onMounted(() => store.load())
       <template v-else>
         <IonList inset>
           <IonItem>
+            <ClientLogo slot="start" :name="client.name" :url="client.logo_url" :size="56" />
             <IonLabel>
               <h1>{{ client.name }}</h1>
               <p>{{ client.type.label }} · {{ client.status.label }}</p>

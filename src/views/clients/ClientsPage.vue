@@ -26,6 +26,7 @@ import { add, cloudUploadOutline, star } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { matchesSearch } from '@/offline/collection'
+import ClientLogo from '@/components/ClientLogo.vue'
 
 const auth = useAuthStore()
 const store = useClientsStore()
@@ -96,6 +97,7 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           :router-link="{ name: 'client', params: { id: client.id } }"
           detail
         >
+          <ClientLogo slot="start" :name="client.name" :url="client.logo_url" :size="40" />
           <IonLabel>
             <h2>
               <IonIcon v-if="client.is_favorite" :icon="star" color="warning" aria-label="Favori" />
