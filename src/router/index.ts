@@ -93,6 +93,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'factures',
+          name: 'invoices',
+          component: () => import('@/views/invoices/InvoicesPage.vue'),
+          meta: { accountTypes: ['manager'], permissions: ['invoices.view'] },
+        },
+        {
+          path: 'factures/:id(\\d+)',
+          name: 'invoice',
+          component: () => import('@/views/invoices/InvoiceDetailPage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager'], permissions: ['invoices.view'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),

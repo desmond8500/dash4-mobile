@@ -4,6 +4,9 @@ import {
   IonCardContent,
   IonCardHeader,
   IonCardTitle,
+  IonItem,
+  IonLabel,
+  IonNote,
   IonContent,
   IonHeader,
   IonPage,
@@ -13,14 +16,20 @@ import {
   IonToolbar,
   type RefresherCustomEvent,
 } from '@ionic/vue'
+import { onMounted } from 'vue'
+import { formatMoney } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
+import { useInvoicesStore } from '@/stores/invoices'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
+const invoices = useInvoicesStore()
+
+onMounted(() => void invoices.load().then(() => invoices.refresh()).catch(() => undefined))
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush()])
+  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined)])
   await event.target.complete()
 }
 </script>
@@ -50,7 +59,25 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </IonCardContent>
       </IonCard>
 
-      <IonCard v-else>
+      <IonCard v-if="invoices.allowed()" button :router-link="{ name: 'invoices' }">
+        <IonCardHeader>
+          <IonCardTitle>Factures</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonItem lines="none">
+            <IonLabel>À encaisser</IonLabel>
+            <IonNote slot="end">{{ formatMoney(invoices.summary.toCollect) }}</IonNote>
+          </IonItem>
+          <IonItem lines="none">
+            <IonLabel>En retard</IonLabel>
+            <IonNote slot="end" :color="invoices.summary.overdueCount ? 'danger' : undefined">
+              {{ formatMoney(invoices.summary.overdueAmount) }} ({{ invoices.summary.overdueCount }})
+            </IonNote>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
+
+      <IonCard v-if="!auth.isTechnician">
         <IonCardHeader>
           <IonCardTitle>Espace gestionnaire</IonCardTitle>
         </IonCardHeader>

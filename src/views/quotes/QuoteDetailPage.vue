@@ -20,6 +20,8 @@ import {
 import { formatMoney, type Quote } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useQuotesStore } from '@/stores/quotes'
+import { useInvoicesStore } from '@/stores/invoices'
+import InvoiceList from '@/components/InvoiceList.vue'
 import { formatDate } from '@/utils/projects'
 import { quoteStatusColor } from '@/utils/quotes'
 
@@ -27,6 +29,8 @@ import { quoteStatusColor } from '@/utils/quotes'
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
 const store = useQuotesStore()
+const invoices = useInvoicesStore()
+const quoteInvoices = computed(() => invoices.ofQuote(Number(props.id)))
 
 const quote = ref<Quote | null>(null)
 const offline = ref(false)
@@ -37,6 +41,7 @@ const money = (v: number | undefined) => (v === undefined ? '' : formatMoney(v))
 const qty = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
 
 onMounted(async () => {
+  void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
   try {
     const result = await store.detail(Number(props.id))
     quote.value = result.quote
@@ -124,6 +129,14 @@ onMounted(async () => {
           </IonItem>
           <IonItem v-if="!section.lines.length"><IonLabel color="medium">Aucune ligne.</IonLabel></IonItem>
         </IonList>
+
+        <IonList v-if="showPrices && quote.remaining_to_invoice !== undefined && quote.invoices?.length" inset>
+          <IonItem>
+            <IonLabel>Reste à facturer (hors taxes)</IonLabel>
+            <IonNote slot="end">{{ money(quote.remaining_to_invoice) }}</IonNote>
+          </IonItem>
+        </IonList>
+        <InvoiceList :invoices="quoteInvoices" />
 
         <IonList v-if="quote.payment_terms" inset>
           <IonListHeader><IonLabel>Modalités de paiement</IonLabel></IonListHeader>
