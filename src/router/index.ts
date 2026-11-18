@@ -119,6 +119,18 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['stock.view'] },
         },
         {
+          path: 'depenses',
+          name: 'expenses',
+          component: () => import('@/views/expenses/ExpensesPage.vue'),
+          meta: { permissions: ['accounting.view', 'accounting.view.own'] },
+        },
+        {
+          path: 'depenses/nouvelle',
+          name: 'expense-new',
+          component: () => import('@/views/expenses/ExpenseFormPage.vue'),
+          meta: { permissions: ['accounting.create', 'accounting.create.own'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),
