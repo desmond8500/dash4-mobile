@@ -14,7 +14,6 @@ import {
 import { ApiError } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
-import { API_URL } from '@/services/api'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
@@ -80,8 +79,6 @@ async function submit(): Promise<void> {
           <span v-else>Se connecter</span>
         </IonButton>
 
-        <!-- PROVISOIRE : adresse de l'API affichée pour la mise en service, à retirer ensuite -->
-        <small class="muted api-url">Serveur : {{ API_URL }}</small>
       </form>
     </IonContent>
   </IonPage>
@@ -108,10 +105,5 @@ p {
 
 .password {
   margin-top: 1rem;
-}
-
-.api-url {
-  text-align: center;
-  word-break: break-all;
 }
 </style>
