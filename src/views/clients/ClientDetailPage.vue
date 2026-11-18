@@ -29,6 +29,7 @@ import type { Contact } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { useClientRequestsStore } from '@/stores/clientRequests'
+import { useProjectsStore } from '@/stores/projects'
 import { mailHref, telHref } from '@/utils/links'
 import ClientLogo from '@/components/ClientLogo.vue'
 
@@ -36,6 +37,8 @@ const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
 const store = useClientsStore()
 const requests = useClientRequestsStore()
+const projects = useProjectsStore()
+const clientProjects = computed(() => projects.ofClient(Number(props.id)))
 const clientRequests = computed(() => requests.sorted.filter((r) => r.client_id === Number(props.id)))
 
 const clientId = computed(() => Number(props.id))
@@ -56,6 +59,7 @@ function contactEmails(contact: Contact): string[] {
 onMounted(() => {
   void store.load()
   void requests.load()
+  void projects.load()
 })
 </script>
 
@@ -100,6 +104,16 @@ onMounted(() => {
           </IonItem>
           <IonItem v-if="client.description">
             <IonLabel class="ion-text-wrap notes">{{ client.description }}</IonLabel>
+          </IonItem>
+        </IonList>
+
+        <IonList v-if="clientProjects.length" inset>
+          <IonListHeader><IonLabel>Projets</IonLabel></IonListHeader>
+          <IonItem v-for="p in clientProjects" :key="p.id" :router-link="{ name: 'project', params: { id: p.id } }" detail>
+            <IonLabel>
+              <h3>{{ p.name }}</h3>
+              <p>{{ p.status.label }}</p>
+            </IonLabel>
           </IonItem>
         </IonList>
 

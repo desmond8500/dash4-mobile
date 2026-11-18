@@ -73,6 +73,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['clients.create'] },
         },
         {
+          path: 'projets',
+          name: 'projects',
+          component: () => import('@/views/projects/ProjectsPage.vue'),
+          meta: { accountTypes: ['manager'], permissions: ['projects.view', 'projects.view.own'] },
+        },
+        {
+          path: 'projets/:id(\\d+)',
+          name: 'project',
+          component: () => import('@/views/projects/ProjectDetailPage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager'], permissions: ['projects.view', 'projects.view.own'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),
