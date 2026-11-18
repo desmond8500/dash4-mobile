@@ -55,8 +55,8 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           <IonCardTitle>Espace gestionnaire</IonCardTitle>
         </IonCardHeader>
         <IonCardContent>
-          Clients, demandes clients, projets, devis, stock et tâches arrivent dans les prochaines livraisons de la
-          V1. Tout fonctionnera aussi sans réseau.
+          Les clients et leurs contacts sont dans l'onglet Clients, consultables même sans réseau. Demandes
+          clients, projets, devis, stock et tâches arrivent dans les prochaines livraisons de la V1.
         </IonCardContent>
       </IonCard>
     </IonContent>

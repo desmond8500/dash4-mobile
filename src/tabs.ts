@@ -1,10 +1,11 @@
-import { homeOutline, personCircleOutline } from 'ionicons/icons'
+import { businessOutline, homeOutline, personCircleOutline } from 'ionicons/icons'
 
 /**
  * Onglets du bas de l'écran, selon le type de compte et les permissions.
  * Une seule application : les gestionnaires et les techniciens n'ont pas les mêmes onglets
  * (TODO §5, « Une seule app, contenu selon le type de compte »).
  * Les modules (tâches, rapports, demandes clients, devis…) seront ajoutés ici au fil des livraisons.
+ * Un technicien n'a pas l'onglet Clients : il ne verra que les clients de ses tâches, depuis ses tâches.
  */
 export interface TabEntry {
   name: string
@@ -18,6 +19,13 @@ export interface TabEntry {
 
 export const TABS: TabEntry[] = [
   { name: 'home', label: 'Accueil', icon: homeOutline, accountTypes: ['manager', 'technician'], permissions: [] },
+  {
+    name: 'clients',
+    label: 'Clients',
+    icon: businessOutline,
+    accountTypes: ['manager'],
+    permissions: ['clients.view', 'clients.view.own'],
+  },
   { name: 'profile', label: 'Profil', icon: personCircleOutline, accountTypes: ['manager', 'technician'], permissions: [] },
 ]
 

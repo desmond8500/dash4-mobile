@@ -22,6 +22,13 @@ export const useSyncStore = defineStore('sync', () => {
     api.request(item.method, item.path, item.payload),
   )
 
+  const flushedListeners = new Set<() => void>()
+
+  /** Appelé après un envoi qui a fait partir au moins une action (pour recharger les données). */
+  function onFlushed(listener: () => void): void {
+    flushedListeners.add(listener)
+  }
+
   const pendingCount = computed(() => pending.value.length)
   const failedItems = computed(() => pending.value.filter((item) => item.lastError))
 
@@ -35,6 +42,7 @@ export const useSyncStore = defineStore('sync', () => {
     try {
       const result = await outbox.flush()
       if (!result.interrupted) lastSync.value = Date.now()
+      if (result.sent > 0) flushedListeners.forEach((listener) => listener())
     } finally {
       syncing.value = false
       await refreshPending()
@@ -75,5 +83,5 @@ export const useSyncStore = defineStore('sync', () => {
     void flush()
   }
 
-  return { online, pending, syncing, lastSync, pendingCount, failedItems, start, flush, enqueue, discard, refreshPending }
+  return { online, pending, syncing, lastSync, pendingCount, failedItems, start, flush, enqueue, discard, refreshPending, onFlushed }
 })

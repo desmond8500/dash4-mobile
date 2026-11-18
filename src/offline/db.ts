@@ -71,8 +71,16 @@ export const indexedDbOutboxStore: OutboxStore = {
   },
 }
 
+const wipeListeners = new Set<() => void>()
+
+/** Prévient un store quand les données locales sont effacées, pour vider aussi sa mémoire. */
+export function onWipe(listener: () => void): void {
+  wipeListeners.add(listener)
+}
+
 /** Efface toutes les données locales (déconnexion, changement de type de compte). */
 export async function wipeLocalData(): Promise<void> {
   await run('kv', 'readwrite', (s) => s.clear())
   await indexedDbOutboxStore.clear()
+  wipeListeners.forEach((listener) => listener())
 }
