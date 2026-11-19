@@ -77,6 +77,6 @@ describe('onglet Demandes', () => {
   })
 
   it("n'apparaît pas sans droit sur les demandes", () => {
-    expect(names('manager', ['delivery_notes.view'])).toEqual(['home', 'profile'])
+    expect(names('manager', ['delivery_notes.view'])).toEqual(['home', 'messages', 'profile'])
   })
 })
