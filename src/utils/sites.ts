@@ -12,3 +12,8 @@ export function equipmentMatches(e: Equipment, query: string): boolean {
 export function statusColor(status: EquipmentStatus): string {
   return ({ planned: 'medium', installed: 'primary', commissioned: 'success', faulty: 'danger', removed: 'dark' } as const)[status]
 }
+
+/** Le plan gardé sur le téléphone sert s'il est à jour, ou s'il n'y a pas de réseau. */
+export function canUseCachedPlan(cached: { updated_at: string | null } | null | undefined, plan: { updated_at: string | null }, online: boolean): boolean {
+  return !!cached && (cached.updated_at === plan.updated_at || !online)
+}

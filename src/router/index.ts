@@ -189,6 +189,13 @@ export const router = createRouter({
           meta: { permissions: ['sites.view', 'sites.view.own'] },
         },
         {
+          path: 'chantier/:projectId(\\d+)/plans/:planId(\\d+)',
+          name: 'site-plan',
+          component: () => import('@/views/sites/PlanPage.vue'),
+          props: true,
+          meta: { permissions: ['sites.view', 'sites.view.own'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),

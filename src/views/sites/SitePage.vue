@@ -43,7 +43,9 @@ const search = ref('')
 onMounted(async () => {
   await store.load(id.value)
   void store.refresh(id.value)
+  void store.loadPlans(id.value)
 })
+const plans = computed(() => store.plans[id.value] ?? [])
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
   await store.refresh(id.value)
   await event.target.complete()
@@ -118,6 +120,12 @@ async function changeStatus(e: Equipment): Promise<void> {
           <IonProgressBar :value="site.progress / 100" />
           <IonNote>{{ site.systems.length }} système(s) · {{ site.equipment_count }} équipement(s) · {{ site.buildings.length }} bâtiment(s)</IonNote>
         </div>
+
+        <IonList v-if="plans.length" inset>
+          <IonItem v-for="p in plans" :key="p.id" :router-link="{ name: 'site-plan', params: { projectId: id, planId: p.id } }" detail>
+            <IonLabel>{{ p.name }}<p>{{ p.kind === 'pdf' ? 'PDF' : 'Image' }} · {{ p.markers?.length ?? 0 }} repère(s)</p></IonLabel>
+          </IonItem>
+        </IonList>
 
         <p v-if="!site.systems.length" class="ion-padding"><IonText color="medium">Aucun système installé sur ce chantier.</IonText></p>
         <IonAccordionGroup :multiple="true">

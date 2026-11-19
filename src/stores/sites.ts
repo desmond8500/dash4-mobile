@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ApiError, EQUIPMENT_STATUSES, type EquipmentStatus, type Site } from '@dash4/shared'
+import { ApiError, EQUIPMENT_STATUSES, type EquipmentStatus, type Plan, type Site } from '@dash4/shared'
 import { api } from '@/services/api'
 import { kv, onWipe } from '@/offline/db'
 import { plain } from '@/offline/collection'
 import { useAuthStore } from './auth'
 import { useSyncStore } from './sync'
+import { canUseCachedPlan } from '@/utils/sites'
 
 const key = (projectId: number) => `sites.${projectId}`
 
@@ -20,6 +21,7 @@ export const useSitesStore = defineStore('sites', () => {
   const sync = useSyncStore()
   const sites = ref<Record<number, Site>>({})
   const errors = ref<Record<number, string>>({})
+  const plans = ref<Record<number, Plan[]>>({})
 
   const allowed = () => auth.canAny(SITE_PERMISSIONS)
 
@@ -83,12 +85,43 @@ export const useSitesStore = defineStore('sites', () => {
     await sync.enqueue({ type: 'equipment', label: `${equipment.name} : ${label.toLowerCase()}`, method: 'PATCH', path: `equipment/${equipmentId}`, payload: { status } })
   }
 
+  /** Plans du chantier (liste et repères), gardés avec le chantier. */
+  async function loadPlans(projectId: number): Promise<void> {
+    if (!plans.value[projectId]) {
+      const stored = await kv.get<Plan[]>(`sites.plans.${projectId}`)
+      if (stored) plans.value = { ...plans.value, [projectId]: stored }
+    }
+    try {
+      const list = await api.plans.list(projectId)
+      plans.value = { ...plans.value, [projectId]: list }
+      await kv.set(`sites.plans.${projectId}`, plain(list))
+    } catch {
+      // hors ligne : copie locale
+    }
+  }
+
+  /** Fichier du plan : téléchargé une fois, puis lu depuis le téléphone (même hors ligne). */
+  async function planFile(plan: Plan): Promise<Blob> {
+    const cacheKey = `sites.planfile.${plan.id}`
+    const cached = await kv.get<{ updated_at: string | null; blob: Blob }>(cacheKey)
+    if (cached && canUseCachedPlan(cached, plan, sync.online)) return cached.blob
+    try {
+      const blob = await api.plans.file(plan)
+      await kv.set(cacheKey, { updated_at: plan.updated_at, blob })
+      return blob
+    } catch (e) {
+      if (cached) return cached.blob
+      throw e
+    }
+  }
+
   function reset(): void {
+    plans.value = {}
     sites.value = {}
     errors.value = {}
   }
 
   onWipe(reset)
 
-  return { sites, errors, allowed, load, refresh, addProgress, setEquipmentStatus, reset }
+  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, reset }
 })
