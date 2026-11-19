@@ -16,20 +16,27 @@ import {
   IonToolbar,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { formatMoney } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { useInvoicesStore } from '@/stores/invoices'
+import { useTasksStore } from '@/stores/tasks'
+import { isOnDay, isoDay } from '@/utils/tasks'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
 const invoices = useInvoicesStore()
+const tasks = useTasksStore()
+const todayCount = computed(() => tasks.mine.filter((t) => isOnDay(t, isoDay(new Date()))).length)
 
-onMounted(() => void invoices.load().then(() => invoices.refresh()).catch(() => undefined))
+onMounted(() => {
+  void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
+  void tasks.load().then(() => tasks.refresh()).catch(() => undefined)
+})
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined)])
+  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined)])
   await event.target.complete()
 }
 </script>
@@ -49,13 +56,29 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
 
       <h2>Bonjour {{ auth.user?.firstname }}</h2>
 
+      <IonCard v-if="tasks.allowed()" button :router-link="{ name: 'tasks' }">
+        <IonCardHeader>
+          <IonCardTitle>Mes tâches</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonItem lines="none">
+            <IonLabel>Aujourd'hui</IonLabel>
+            <IonNote slot="end">{{ todayCount }}</IonNote>
+          </IonItem>
+          <IonItem lines="none">
+            <IonLabel>À faire</IonLabel>
+            <IonNote slot="end">{{ tasks.openMineCount }}</IonNote>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
+
       <IonCard v-if="auth.isTechnician">
         <IonCardHeader>
           <IonCardTitle>Espace technicien</IonCardTitle>
         </IonCardHeader>
         <IonCardContent>
-          Notez les demandes des clients sur place dans l'onglet Demandes, même sans réseau. Vos tâches,
-          informations de chantier, rapports d'intervention et demandes d'accès arrivent dans les prochaines livraisons.
+          Vos tâches, vos demandes clients et vos dépenses fonctionnent même sans réseau. Informations de chantier,
+          rapports d'intervention et demandes d'accès arrivent dans les prochaines livraisons.
         </IonCardContent>
       </IonCard>
 
@@ -82,8 +105,8 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           <IonCardTitle>Espace gestionnaire</IonCardTitle>
         </IonCardHeader>
         <IonCardContent>
-          Clients, contacts et demandes clients sont consultables et se saisissent même sans réseau. Projets,
-          devis, stock et tâches arrivent dans les prochaines livraisons de la V1.
+          Clients, demandes, projets, devis, stock, tâches et dépenses sont consultables même sans réseau.
+          Les journaux d'intervention arrivent dans la prochaine livraison.
         </IonCardContent>
       </IonCard>
     </IonContent>

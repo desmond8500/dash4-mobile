@@ -131,6 +131,19 @@ export const router = createRouter({
           meta: { permissions: ['accounting.create', 'accounting.create.own'] },
         },
         {
+          path: 'taches',
+          name: 'tasks',
+          component: () => import('@/views/tasks/TasksPage.vue'),
+          meta: { permissions: ['tasks.view', 'tasks.view.own'] },
+        },
+        {
+          path: 'taches/:id(\\d+)',
+          name: 'task',
+          component: () => import('@/views/tasks/TaskPage.vue'),
+          props: true,
+          meta: { permissions: ['tasks.view', 'tasks.view.own'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),
