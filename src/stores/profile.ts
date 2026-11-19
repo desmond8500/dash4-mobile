@@ -41,7 +41,7 @@ export const useProfileStore = defineStore('profile', () => {
   async function save(changes: ProfilePayload): Promise<void> {
     if (!auth.user || Object.keys(changes).length === 0) return
     await auth.setLocal(applyProfile(auth.user, changes))
-    await sync.enqueue({ type: 'profile', label: 'Modification du profil', method: 'PATCH', path: 'me', payload: changes })
+    await sync.enqueue({ type: 'profile', label: 'Modification du profil', method: 'PATCH', path: 'me', payload: { ...changes } })
   }
 
   async function setAvatar(blob: Blob): Promise<void> {
