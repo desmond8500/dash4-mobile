@@ -21,6 +21,7 @@ import {
   toastController,
   useIonRouter,
 } from '@ionic/vue'
+import { openLightbox } from '@/utils/lightbox'
 import { PAYMENT_METHODS } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useExpensesStore } from '@/stores/expenses'
@@ -140,7 +141,7 @@ async function save(): Promise<void> {
               <input type="file" accept="image/*" capture="environment" hidden @change="onPhoto" />
             </label>
           </IonItem>
-          <img v-if="preview" :src="preview" alt="" class="preview" />
+          <img v-if="preview" :src="preview" alt="" class="preview" @click="openLightbox([{ src: preview!, caption: 'Justificatif' }])" />
         </IonList>
 
         <div v-if="error" class="ion-padding-horizontal"><IonText color="danger"><p>{{ error }}</p></IonText></div>

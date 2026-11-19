@@ -11,3 +11,27 @@
 .muted {
   color: var(--ion-color-medium);
 }
+
+/* Visionneuse d'images (PhotoSwipe) : légende et zone sûre des téléphones à encoche */
+.pswp__dash4-caption {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 0.875rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pswp__dash4-caption:empty {
+  display: none;
+}
+
+.pswp__top-bar {
+  top: env(safe-area-inset-top);
+}

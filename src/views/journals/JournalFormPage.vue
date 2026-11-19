@@ -31,6 +31,7 @@ import { useJournalsStore } from '@/stores/journals'
 import { useSyncStore } from '@/stores/sync'
 import { useTasksStore } from '@/stores/tasks'
 import { todayIso } from '@/utils/expenses'
+import { openPhotos } from '@/utils/lightbox'
 import { buildJournalPayload, sectionPositions, SECTION_TITLES, type JournalForm, type SectionKey } from '@/utils/journals'
 
 /** Nouveau rapport d'intervention, depuis une tâche ou non ; photos et position facultatives. */
@@ -160,7 +161,7 @@ async function save(): Promise<void> {
           <IonItem><IonTextarea v-model="form[key]" :label="SECTION_TITLES[key]" label-placement="stacked" :auto-grow="true" :rows="key === 'done' ? 3 : 1" autocapitalize="sentences" /></IonItem>
           <div v-if="ofSlot(key).length" class="photos">
             <div v-for="p in ofSlot(key)" :key="p.url" class="photo">
-              <img :src="p.url" alt="" />
+              <img :src="p.url" alt="" @click="openPhotos(photos, p.url)" />
               <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(p.url)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
             </div>
           </div>
@@ -180,7 +181,7 @@ async function save(): Promise<void> {
           <IonListHeader><IonLabel>Autres photos</IonLabel></IonListHeader>
           <div class="photos">
             <div v-for="p in ofSlot('general')" :key="p.url" class="photo">
-              <img :src="p.url" alt="" />
+              <img :src="p.url" alt="" @click="openPhotos(photos, p.url)" />
               <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(p.url)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
             </div>
           </div>

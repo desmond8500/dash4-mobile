@@ -17,6 +17,7 @@ import {
   IonToolbar,
 } from '@ionic/vue'
 import CommentsSection from '@/components/CommentsSection.vue'
+import { openPhotos } from '@/utils/lightbox'
 import type { Document } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useJournalsStore } from '@/stores/journals'
@@ -78,12 +79,12 @@ onMounted(async () => {
           <IonListHeader><IonLabel>{{ s.title }}</IonLabel></IonListHeader>
           <IonItem><IonLabel class="ion-text-wrap pre">{{ s.body }}</IonLabel></IonItem>
           <div v-if="s.id && sectionPhotos[s.id]?.length" class="photos ion-padding">
-            <img v-for="p in sectionPhotos[s.id]" :key="p.url" :src="p.url" :alt="p.name" />
+            <img v-for="p in sectionPhotos[s.id]" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(sectionPhotos[s.id]!, p.url)" />
           </div>
           <IonItem v-else-if="s.photos?.length && !sync.online" lines="none"><IonNote>{{ s.photos.length }} photo(s), visibles avec le réseau.</IonNote></IonItem>
         </IonList>
         <div v-if="photos.length" class="photos ion-padding">
-          <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" />
+          <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(photos, p.url)" />
         </div>
         <p v-else-if="store.photosWaiting(journal.client_uuid)" class="ion-padding"><IonNote>{{ store.photosWaiting(journal.client_uuid) }} photo(s) en attente d'envoi.</IonNote></p>
         <CommentsSection type="journals" :id="journal.id" />

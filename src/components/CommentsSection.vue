@@ -7,6 +7,7 @@ import type { CommentableType, Mentionable } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useCommentsStore } from '@/stores/comments'
 import { useSyncStore } from '@/stores/sync'
+import { openLightbox, openPhotos } from '@/utils/lightbox'
 
 /** Commentaires d'une fiche : lecture hors ligne, @ pour mentionner, photos ; envoi via la file d'attente. */
 const props = defineProps<{ type: CommentableType; id: number }>()
@@ -33,6 +34,11 @@ onMounted(async () => {
   }
 })
 
+/** Photos d'un commentaire déjà affichées en vignette. */
+function openComment(files: Array<{ id: number; name: string }>, id: number): void {
+  const shown = files.filter((f) => thumbs.value[f.id])
+  void openLightbox(shown.map((f) => ({ src: thumbs.value[f.id]!, caption: f.name })), shown.findIndex((f) => f.id === id))
+}
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '')
 
 function onInput(event: CustomEvent): void {
@@ -88,7 +94,7 @@ async function remove(id: number): Promise<void> {
         <p class="body"><template v-for="(part, i) in splitMentions(c.body, c.mentions ?? [])" :key="i"><strong v-if="part.mention" class="mention">{{ part.text }}</strong><template v-else>{{ part.text }}</template></template></p>
         <div v-if="c.files?.length" class="photos">
           <template v-for="f in c.files" :key="f.id">
-            <img v-if="thumbs[f.id]" :src="thumbs[f.id]" :alt="f.name" />
+            <img v-if="thumbs[f.id]" :src="thumbs[f.id]" :alt="f.name" @click="openComment(c.files ?? [], f.id)" />
             <IonNote v-else>📎 {{ f.name }}</IonNote>
           </template>
         </div>
@@ -114,7 +120,7 @@ async function remove(id: number): Promise<void> {
     </IonItem>
     <div v-if="photos.length" class="photos ion-padding-horizontal">
       <div v-for="p in photos" :key="p.url" class="photo">
-        <img :src="p.url" alt="" />
+        <img :src="p.url" alt="" @click="openPhotos(photos, p.url)" />
         <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(p.url)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
       </div>
     </div>
