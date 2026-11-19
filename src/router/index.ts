@@ -163,6 +163,25 @@ export const router = createRouter({
           meta: { permissions: ['journals.view', 'journals.view.own'] },
         },
         {
+          path: 'acces',
+          name: 'tech-space',
+          component: () => import('@/views/tech/TechSpacePage.vue'),
+          meta: { permissions: ['tech_shares.view', 'tech_shares.view.own', 'tech_access_requests.view', 'tech_access_requests.view.own'] },
+        },
+        {
+          path: 'acces/info/:id(\\d+)',
+          name: 'tech-share',
+          component: () => import('@/views/tech/TechSharePage.vue'),
+          props: true,
+          meta: { permissions: ['tech_shares.view', 'tech_shares.view.own'] },
+        },
+        {
+          path: 'acces/demande',
+          name: 'access-request-new',
+          component: () => import('@/views/tech/AccessRequestFormPage.vue'),
+          meta: { permissions: ['tech_access_requests.create'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),

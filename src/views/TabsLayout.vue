@@ -6,17 +6,20 @@ import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { visibleTabs } from '@/tabs'
 import { useClientRequestsStore } from '@/stores/clientRequests'
+import { useTechSpaceStore } from '@/stores/techSpace'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
 const router = useRouter()
 const requests = useClientRequestsStore()
+const techSpace = useTechSpaceStore()
 
 // Compteur de l'onglet Demandes, lu dans la copie locale (fonctionne hors ligne)
 onMounted(async () => {
-  await requests.load()
+  await Promise.all([requests.load(), techSpace.load()])
   void requests.refresh()
+  void techSpace.refresh()
 })
 
 const tabs = computed(() =>
@@ -42,6 +45,9 @@ function hrefFor(name: string): string {
           </IonBadge>
           <IonBadge v-if="tab.name === 'client-requests' && requests.openCount" color="primary">
             {{ requests.openCount }}
+          </IonBadge>
+          <IonBadge v-if="tab.name === 'tech-space' && techSpace.unread + techSpace.toDecide.length" color="primary">
+            {{ techSpace.unread + techSpace.toDecide.length }}
           </IonBadge>
         </IonTabButton>
       </IonTabBar>

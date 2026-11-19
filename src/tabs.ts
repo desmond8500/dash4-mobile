@@ -1,4 +1,4 @@
-import { bookOutline, checkboxOutline, briefcaseOutline, businessOutline, chatbubblesOutline, cubeOutline, homeOutline, walletOutline, personCircleOutline } from 'ionicons/icons'
+import { keyOutline, bookOutline, checkboxOutline, briefcaseOutline, businessOutline, chatbubblesOutline, cubeOutline, homeOutline, walletOutline, personCircleOutline } from 'ionicons/icons'
 
 /**
  * Onglets du bas de l'écran, selon le type de compte et les permissions.
@@ -32,6 +32,13 @@ export const TABS: TabEntry[] = [
     icon: bookOutline,
     accountTypes: ['manager', 'technician'],
     permissions: ['journals.view', 'journals.view.own'],
+  },
+  {
+    name: 'tech-space',
+    label: 'Accès',
+    icon: keyOutline,
+    accountTypes: ['manager', 'technician'],
+    permissions: ['tech_shares.view', 'tech_shares.view.own', 'tech_access_requests.view', 'tech_access_requests.view.own'],
   },
   {
     name: 'client-requests',

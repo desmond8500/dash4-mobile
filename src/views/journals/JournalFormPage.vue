@@ -25,13 +25,13 @@ import {
   toastController,
   useIonRouter,
 } from '@ionic/vue'
-import { closeCircle } from 'ionicons/icons'
+import { cameraOutline, closeCircle } from 'ionicons/icons'
 import { JOURNAL_TYPES, OPEN_TASK_STATUSES } from '@dash4/shared'
 import { useJournalsStore } from '@/stores/journals'
 import { useSyncStore } from '@/stores/sync'
 import { useTasksStore } from '@/stores/tasks'
 import { todayIso } from '@/utils/expenses'
-import { buildJournalPayload, type JournalForm } from '@/utils/journals'
+import { buildJournalPayload, sectionPositions, SECTION_TITLES, type JournalForm, type SectionKey } from '@/utils/journals'
 
 /** Nouveau rapport d'intervention, depuis une tâche ou non ; photos et position facultatives. */
 const store = useJournalsStore()
@@ -41,8 +41,11 @@ const route = useRoute()
 const ionRouter = useIonRouter()
 
 const form = reactive<JournalForm>({ title: '', type: 'intervention', date: todayIso(), taskId: null, done: '', todo: '', remarks: '', latitude: null, longitude: null })
-const photos = ref<File[]>([])
-const previews = ref<string[]>([])
+/** Photos prises pour une section, ou pour le rapport en général. */
+type PhotoSlot = SectionKey | 'general'
+const photos = ref<Array<{ file: File; url: string; slot: PhotoSlot }>>([])
+const sectionKeys = Object.keys(SECTION_TITLES) as SectionKey[]
+const ofSlot = (slot: PhotoSlot) => photos.value.filter((p) => p.slot === slot)
 const withPosition = ref(false)
 const locating = ref(false)
 const error = ref<string | null>(null)
@@ -65,18 +68,14 @@ function onTask(id: number | null): void {
   if (task && !form.title.trim()) form.title = task.title
 }
 
-function onPhotos(event: Event): void {
+function onPhotos(event: Event, slot: PhotoSlot): void {
   const input = event.target as HTMLInputElement
-  for (const file of Array.from(input.files ?? [])) {
-    photos.value.push(file)
-    previews.value.push(URL.createObjectURL(file))
-  }
+  for (const file of Array.from(input.files ?? [])) photos.value.push({ file, url: URL.createObjectURL(file), slot })
   input.value = ''
 }
-function removePhoto(i: number): void {
-  URL.revokeObjectURL(previews.value[i]!)
-  photos.value.splice(i, 1)
-  previews.value.splice(i, 1)
+function removePhoto(url: string): void {
+  URL.revokeObjectURL(url)
+  photos.value = photos.value.filter((p) => p.url !== url)
 }
 
 function togglePosition(on: boolean): void {
@@ -113,7 +112,9 @@ async function save(): Promise<void> {
   if (!payload) return
   saving.value = true
   try {
-    await store.create(payload, photos.value)
+    // Photo d'une section laissée vide : elle va avec le rapport
+    const positions = sectionPositions(form)
+    await store.create(payload, photos.value.map((p) => ({ blob: p.file, section: p.slot === 'general' ? null : positions[p.slot] })))
     const toast = await toastController.create({
       message: sync.online ? 'Rapport envoyé.' : 'Rapport gardé sur le téléphone, envoyé avec ses photos dès le retour du réseau.',
       duration: 3000,
@@ -155,28 +156,42 @@ async function save(): Promise<void> {
           <IonItem><IonInput v-model="form.date" type="date" label="Date" label-placement="stacked" :max="todayIso()" /></IonItem>
         </IonList>
 
-        <IonList inset>
-          <IonItem><IonTextarea v-model="form.done" label="Travaux réalisés" label-placement="stacked" :auto-grow="true" :rows="3" autocapitalize="sentences" /></IonItem>
-          <IonItem><IonTextarea v-model="form.todo" label="Reste à faire" label-placement="stacked" :auto-grow="true" autocapitalize="sentences" /></IonItem>
-          <IonItem><IonTextarea v-model="form.remarks" label="Observations" label-placement="stacked" :auto-grow="true" autocapitalize="sentences" /></IonItem>
+        <IonList v-for="key in sectionKeys" :key="key" inset>
+          <IonItem><IonTextarea v-model="form[key]" :label="SECTION_TITLES[key]" label-placement="stacked" :auto-grow="true" :rows="key === 'done' ? 3 : 1" autocapitalize="sentences" /></IonItem>
+          <div v-if="ofSlot(key).length" class="photos">
+            <div v-for="p in ofSlot(key)" :key="p.url" class="photo">
+              <img :src="p.url" alt="" />
+              <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(p.url)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
+            </div>
+          </div>
+          <IonItem lines="none">
+            <label class="photo-button small">
+              <IonIcon :icon="cameraOutline" /> Photo
+              <input type="file" accept="image/*" capture="environment" hidden @change="onPhotos($event, key)" />
+            </label>
+            <label slot="end" class="photo-button small">
+              Galerie
+              <input type="file" accept="image/*" multiple hidden @change="onPhotos($event, key)" />
+            </label>
+          </IonItem>
         </IonList>
 
         <IonList inset>
-          <IonListHeader><IonLabel>Photos</IonLabel></IonListHeader>
+          <IonListHeader><IonLabel>Autres photos</IonLabel></IonListHeader>
           <div class="photos">
-            <div v-for="(src, i) in previews" :key="src" class="photo">
-              <img :src="src" alt="" />
-              <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(i)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
+            <div v-for="p in ofSlot('general')" :key="p.url" class="photo">
+              <img :src="p.url" alt="" />
+              <IonButton fill="clear" size="small" color="danger" aria-label="Retirer" @click="removePhoto(p.url)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
             </div>
           </div>
           <IonItem lines="none">
             <label class="photo-button">
               Prendre une photo
-              <input type="file" accept="image/*" capture="environment" hidden @change="onPhotos" />
+              <input type="file" accept="image/*" capture="environment" hidden @change="onPhotos($event, 'general')" />
             </label>
             <label slot="end" class="photo-button">
               Galerie
-              <input type="file" accept="image/*" multiple hidden @change="onPhotos" />
+              <input type="file" accept="image/*" multiple hidden @change="onPhotos($event, 'general')" />
             </label>
           </IonItem>
           <IonItem>
@@ -221,5 +236,16 @@ async function save(): Promise<void> {
   color: var(--ion-color-primary);
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.photo-button.small {
+  font-size: 0.9rem;
+}
+
+.photos {
+  padding-top: 0.5rem;
 }
 </style>

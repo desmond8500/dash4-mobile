@@ -6,6 +6,7 @@ import { kv, onWipe } from '@/offline/db'
 import { mergeChanges, pendingCreations, plain } from '@/offline/collection'
 import { useAuthStore } from './auth'
 import { useSyncStore } from './sync'
+import { normalizePendingPhotos, photoTarget } from '@/utils/journals'
 
 const ITEMS_KEY = 'journals.items'
 const SYNCED_AT_KEY = 'journals.syncedAt'
@@ -16,7 +17,7 @@ export const JOURNAL_PERMISSIONS = ['journals.view', 'journals.view.own']
 
 /**
  * Rapports d'intervention sur le téléphone : rédigés sans réseau, avec les photos gardées sur
- * le téléphone puis envoyées dès que le rapport est arrivé sur le serveur.
+ * le téléphone puis envoyées dès que le rapport est arrivé sur le serveur, chacune dans sa section.
  */
 export const useJournalsStore = defineStore('journals', () => {
   const auth = useAuthStore()
@@ -26,8 +27,8 @@ export const useJournalsStore = defineStore('journals', () => {
   const syncedAt = ref<string | null>(null)
   const loaded = ref(false)
   const syncing = ref(false)
-  /** uuid du rapport → nombre de photos en attente. */
-  const pendingPhotos = ref<Record<string, number>>({})
+  /** uuid du rapport → position de section de chaque photo en attente (null : photo du rapport). */
+  const pendingPhotos = ref<Record<string, Array<number | null>>>({})
 
   const allowed = () => auth.canAny(JOURNAL_PERMISSIONS)
   const sorted = computed(() => items.value.filter((j) => !j.deleted_at).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || b.id - a.id))
@@ -35,10 +36,10 @@ export const useJournalsStore = defineStore('journals', () => {
 
   async function load(): Promise<void> {
     if (loaded.value || !allowed()) return
-    const [stored, at, photos] = await Promise.all([kv.get<Journal[]>(ITEMS_KEY), kv.get<string>(SYNCED_AT_KEY), kv.get<Record<string, number>>(PHOTOS_KEY)])
+    const [stored, at, photos] = await Promise.all([kv.get<Journal[]>(ITEMS_KEY), kv.get<string>(SYNCED_AT_KEY), kv.get<Record<string, number | Array<number | null>>>(PHOTOS_KEY)])
     items.value = stored ?? []
     syncedAt.value = at ?? null
-    pendingPhotos.value = photos ?? {}
+    pendingPhotos.value = normalizePendingPhotos(photos)
     loaded.value = true
   }
 
@@ -61,32 +62,44 @@ export const useJournalsStore = defineStore('journals', () => {
   }
 
   async function uploadPhotos(): Promise<void> {
-    for (const [uuid, count] of Object.entries({ ...pendingPhotos.value })) {
+    let uploaded = false
+    for (const [uuid, positions] of Object.entries({ ...pendingPhotos.value })) {
       const journal = items.value.find((j) => j.client_uuid === uuid)
       if (!journal) continue
-      for (let i = 0; i < count; i++) {
+      for (const [i, position] of positions.entries()) {
         const blob = await kv.get<Blob>(photoKey(uuid, i))
-        if (blob) await api.documents.upload('journals', journal.id, blob, `photo-${i + 1}.jpg`, `Photo ${i + 1} — ${journal.title}`)
+        const target = photoTarget(journal, position)
+        if (blob) await api.documents.upload(target.type, target.id, blob, `photo-${i + 1}.jpg`, `Photo ${i + 1} — ${journal.title}`)
         await kv.delete(photoKey(uuid, i))
+        uploaded = true
       }
       const rest = { ...pendingPhotos.value }
       delete rest[uuid]
       pendingPhotos.value = rest
-      await kv.set(PHOTOS_KEY, { ...rest })
+      await kv.set(PHOTOS_KEY, plain(rest))
+    }
+    // Les sections renvoient leurs photos : on recharge les rapports concernés
+    if (uploaded) {
+      const since = syncedAt.value
+      const result = await api.syncAll((f) => api.journals.list(f), since)
+      items.value = mergeChanges(items.value, result.items)
+      syncedAt.value = result.serverTime
+      await Promise.all([kv.set(ITEMS_KEY, plain(items.value)), kv.set(SYNCED_AT_KEY, syncedAt.value)])
     }
   }
 
-  async function create(payload: JournalPayload & { title: string; date: string }, photos: Blob[] = []): Promise<void> {
+  /** `photos` : chaque photo avec la position de sa section dans `payload.sections` (null : photo du rapport). */
+  async function create(payload: JournalPayload & { title: string; date: string }, photos: Array<{ blob: Blob; section: number | null }> = []): Promise<void> {
     const item = await sync.enqueue({ type: 'journal', label: `Rapport : ${payload.title}`, method: 'POST', path: 'journals', payload: plain(payload) as unknown as Record<string, unknown> })
     if (photos.length) {
-      await Promise.all(photos.map((p, i) => kv.set(photoKey(item.id, i), p)))
-      pendingPhotos.value = { ...pendingPhotos.value, [item.id]: photos.length }
-      await kv.set(PHOTOS_KEY, { ...pendingPhotos.value })
+      await Promise.all(photos.map((p, i) => kv.set(photoKey(item.id, i), p.blob)))
+      pendingPhotos.value = { ...pendingPhotos.value, [item.id]: photos.map((p) => p.section) }
+      await kv.set(PHOTOS_KEY, plain(pendingPhotos.value))
     }
   }
 
   const find = (id: number) => items.value.find((j) => j.id === id)
-  const photosWaiting = (uuid: string | null) => (uuid ? (pendingPhotos.value[uuid] ?? 0) : 0)
+  const photosWaiting = (uuid: string | null) => (uuid ? (pendingPhotos.value[uuid]?.length ?? 0) : 0)
 
   function reset(): void {
     items.value = []

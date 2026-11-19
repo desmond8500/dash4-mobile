@@ -44,3 +44,18 @@ describe('rapports d\'intervention sur le téléphone', () => {
     expect(visibleTabs('manager', can).map((t) => t.name)).toContain('journals')
   })
 })
+
+describe('photos des sections', () => {
+  it('place chaque photo dans sa section, ou avec le rapport si la section est vide', async () => {
+    const { normalizePendingPhotos, photoTarget, sectionPositions } = await import('../src/utils/journals')
+    expect(sectionPositions({ done: 'Fait', todo: '', remarks: 'RAS' })).toEqual({ done: 0, todo: null, remarks: 1 })
+
+    const journal = { id: 9, sections: [{ id: 41, position: 0, title: 'Travaux réalisés', body: 'Fait' }, { id: 42, position: 1, title: 'Observations', body: 'RAS' }] }
+    expect(photoTarget(journal, 1)).toEqual({ type: 'journal-sections', id: 42 })
+    expect(photoTarget(journal, null)).toEqual({ type: 'journals', id: 9 })
+    expect(photoTarget(journal, 5)).toEqual({ type: 'journals', id: 9 })
+
+    // Photos gardées par une version précédente de l'appli : elles vont avec le rapport
+    expect(normalizePendingPhotos({ a: 2, b: [0, null] })).toEqual({ a: [null, null], b: [0, null] })
+  })
+})

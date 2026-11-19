@@ -27,15 +27,26 @@ const store = useJournalsStore()
 const sync = useSyncStore()
 const journal = computed(() => store.find(Number(props.id)) ?? null)
 const photos = ref<Array<{ name: string; url: string }>>([])
+/** id de section → vignettes de ses photos. */
+const sectionPhotos = ref<Record<number, Array<{ name: string; url: string }>>>({})
+const images = (docs: Document[], max: number) => docs.filter((x) => x.mime_type?.startsWith('image/')).slice(0, max)
+async function thumbs(docs: Document[]): Promise<Array<{ name: string; url: string }>> {
+  const out: Array<{ name: string; url: string }> = []
+  for (const d of docs) {
+    const blob = await api.documents.download(d).catch(() => null)
+    if (blob) out.push({ name: d.name, url: URL.createObjectURL(blob) })
+  }
+  return out
+}
 
 onMounted(async () => {
   await store.load()
   if (!sync.online || !journal.value) return
-  const docs: Document[] = await api.documents.list('journals', journal.value.id).catch(() => [])
-  for (const d of docs.filter((x) => x.mime_type?.startsWith('image/')).slice(0, 12)) {
-    const blob = await api.documents.download(d).catch(() => null)
-    if (blob) photos.value.push({ name: d.name, url: URL.createObjectURL(blob) })
+  for (const s of journal.value.sections ?? []) {
+    if (s.id && s.photos?.length) sectionPhotos.value = { ...sectionPhotos.value, [s.id]: await thumbs(images(s.photos, 9)) }
   }
+  const docs: Document[] = await api.documents.list('journals', journal.value.id).catch(() => [])
+  photos.value = await thumbs(images(docs, 12))
 })
 </script>
 
@@ -65,6 +76,10 @@ onMounted(async () => {
         <IonList v-for="s in journal.sections ?? []" :key="s.id ?? s.title" inset>
           <IonListHeader><IonLabel>{{ s.title }}</IonLabel></IonListHeader>
           <IonItem><IonLabel class="ion-text-wrap pre">{{ s.body }}</IonLabel></IonItem>
+          <div v-if="s.id && sectionPhotos[s.id]?.length" class="photos ion-padding">
+            <img v-for="p in sectionPhotos[s.id]" :key="p.url" :src="p.url" :alt="p.name" />
+          </div>
+          <IonItem v-else-if="s.photos?.length && !sync.online" lines="none"><IonNote>{{ s.photos.length }} photo(s), visibles avec le réseau.</IonNote></IonItem>
         </IonList>
         <div v-if="photos.length" class="photos ion-padding">
           <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" />

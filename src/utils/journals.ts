@@ -1,4 +1,4 @@
-import type { JournalPayload, JournalType } from '@dash4/shared'
+import type { Journal, JournalPayload, JournalType } from '@dash4/shared'
 
 export interface JournalForm {
   title: string
@@ -34,4 +34,37 @@ export function buildJournalPayload(form: JournalForm, today: string): { payload
       ...(form.latitude !== null && form.longitude !== null ? { latitude: form.latitude, longitude: form.longitude } : {}),
     },
   }
+}
+
+export type SectionKey = keyof typeof SECTION_TITLES
+
+/**
+ * Position, dans les sections envoyées, de chaque section du formulaire (null si elle est vide
+ * et n'est donc pas envoyée : ses photos vont alors avec le rapport).
+ */
+export function sectionPositions(form: Pick<JournalForm, SectionKey>): Record<SectionKey, number | null> {
+  let next = 0
+  const result = {} as Record<SectionKey, number | null>
+  for (const key of Object.keys(SECTION_TITLES) as SectionKey[]) {
+    result[key] = form[key].trim() ? next++ : null
+  }
+  return result
+}
+
+/**
+ * Où envoyer une photo gardée sur le téléphone, une fois le rapport sur le serveur :
+ * la section à cette position (par son id), ou le rapport lui-même.
+ */
+export function photoTarget(journal: Pick<Journal, 'id' | 'sections'>, position: number | null): { type: 'journals' | 'journal-sections'; id: number } {
+  const section = position === null ? undefined : (journal.sections ?? []).find((s, i) => (s.position ?? i) === position)
+  return section?.id ? { type: 'journal-sections', id: section.id } : { type: 'journals', id: journal.id }
+}
+
+/** Ancien format (nombre de photos du rapport) ou nouveau (position de section de chaque photo). */
+export function normalizePendingPhotos(stored: Record<string, number | Array<number | null>> | undefined | null): Record<string, Array<number | null>> {
+  const result: Record<string, Array<number | null>> = {}
+  for (const [uuid, value] of Object.entries(stored ?? {})) {
+    result[uuid] = typeof value === 'number' ? Array.from({ length: value }, () => null) : value
+  }
+  return result
 }
