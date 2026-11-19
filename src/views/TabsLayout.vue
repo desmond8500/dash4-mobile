@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonBadge, IonIcon, IonLabel, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs } from '@ionic/vue'
 import { useAuthStore } from '@/stores/auth'
@@ -23,13 +23,25 @@ const messaging = useMessagingStore()
 onMounted(async () => {
   await Promise.all([requests.load(), techSpace.load(), messaging.load()])
   void messaging.refresh()
-  // Pas de temps réel côté serveur : nouveaux messages relevés chaque minute
-  setInterval(() => {
-    if (sync.online) void messaging.refresh()
-  }, 60_000)
+  document.addEventListener('visibilitychange', onVisibility)
+  messagesTimer = setInterval(refreshMessages, 60_000)
   void requests.refresh()
   void techSpace.refresh()
   void notifications.refresh()
+})
+
+// Pas de temps réel côté serveur : compteur des messages relevé chaque minute, seulement quand
+// l'application est affichée et en ligne ; tout de suite quand on y revient.
+let messagesTimer: ReturnType<typeof setInterval> | null = null
+function refreshMessages(): void {
+  if (sync.online && document.visibilityState === 'visible') void messaging.refresh()
+}
+function onVisibility(): void {
+  refreshMessages()
+}
+onUnmounted(() => {
+  if (messagesTimer) clearInterval(messagesTimer)
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 
 const tabs = computed(() =>

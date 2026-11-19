@@ -14,9 +14,11 @@ import {
   IonToolbar,
   actionSheetController,
   alertController,
+  onIonViewDidEnter,
+  onIonViewWillLeave,
 } from '@ionic/vue'
 import { attachOutline, cameraOutline, sendOutline, timeOutline } from 'ionicons/icons'
-import { messageTime, readBy, sameGroup } from '@dash4/shared'
+import { createPoller, messageTime, readBy, sameGroup } from '@dash4/shared'
 import type { Document, Message } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -38,7 +40,9 @@ const photos = ref<Blob[]>([])
 const content = ref<InstanceType<typeof IonContent> | null>(null)
 const photoInput = ref<HTMLInputElement | null>(null)
 const urls = ref<Record<number, string>>({})
-let timer: ReturnType<typeof setInterval> | null = null
+// Relève : 5 s après un échange, puis 15, 30, 60 s si rien n'arrive. Arrêtée dès que l'écran
+// n'est plus affiché (autre onglet, retour, application en arrière-plan).
+const poller = createPoller(() => refresh())
 
 const conversation = computed(() => store.conversations.find((c) => c.id === id.value) ?? null)
 const pendingConv = computed(() => pendingConversations(sync.pending).find((p) => p.id === keyParam.value) ?? null)
@@ -66,13 +70,20 @@ function thumbnails(): void {
   }
 }
 
-async function refresh(): Promise<void> {
+/** true s'il y avait de nouveaux messages (la relève reste rapide). */
+async function refresh(): Promise<boolean> {
   if (!id.value) id.value = await store.resolve(/^\d+$/.test(keyParam.value) ? Number(keyParam.value) : keyParam.value)
-  if (!id.value || !sync.online) return
+  if (!id.value || !sync.online) return false
   const fresh = await store.refreshThread(id.value)
   thumbnails()
   await store.markRead(id.value)
   if (fresh) await scrollDown()
+  return fresh
+}
+
+function onVisibility(): void {
+  if (document.visibilityState === 'visible') poller.start()
+  else poller.stop()
 }
 
 onMounted(async () => {
@@ -82,11 +93,13 @@ onMounted(async () => {
   if (id.value) await store.loadThread(id.value)
   thumbnails()
   await scrollDown()
-  await refresh()
-  timer = setInterval(() => void refresh(), 10_000)
+  document.addEventListener('visibilitychange', onVisibility)
 })
+onIonViewDidEnter(() => poller.start())
+onIonViewWillLeave(() => poller.stop())
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  poller.stop()
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 
 async function send(): Promise<void> {
@@ -94,6 +107,7 @@ async function send(): Promise<void> {
   await store.send(id.value ?? keyParam.value, text.value, photos.value)
   text.value = ''
   photos.value = []
+  poller.poke()
   await scrollDown()
 }
 
