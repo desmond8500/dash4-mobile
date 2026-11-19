@@ -18,6 +18,7 @@ import {
   IonToolbar,
   toastController,
 } from '@ionic/vue'
+import CommentsSection from '@/components/CommentsSection.vue'
 import { banOutline, callOutline, checkmarkCircleOutline, playOutline, refreshOutline } from 'ionicons/icons'
 import type { ClientRequestStatus } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
@@ -134,6 +135,7 @@ onMounted(() => store.load())
             <IonIcon slot="start" :icon="refreshOutline" /> Rouvrir
           </IonButton>
         </div>
+        <CommentsSection type="client-requests" :id="request.id" />
       </template>
     </IonContent>
   </IonPage>

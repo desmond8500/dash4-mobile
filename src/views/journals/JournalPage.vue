@@ -16,6 +16,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
+import CommentsSection from '@/components/CommentsSection.vue'
 import type { Document } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useJournalsStore } from '@/stores/journals'
@@ -85,6 +86,7 @@ onMounted(async () => {
           <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" />
         </div>
         <p v-else-if="store.photosWaiting(journal.client_uuid)" class="ion-padding"><IonNote>{{ store.photosWaiting(journal.client_uuid) }} photo(s) en attente d'envoi.</IonNote></p>
+        <CommentsSection type="journals" :id="journal.id" />
       </template>
     </IonContent>
   </IonPage>

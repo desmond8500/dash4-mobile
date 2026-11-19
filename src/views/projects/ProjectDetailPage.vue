@@ -21,6 +21,7 @@ import {
   IonToolbar,
   toastController,
 } from '@ionic/vue'
+import CommentsSection from '@/components/CommentsSection.vue'
 import {
   cloudUploadOutline,
   documentOutline,
@@ -218,6 +219,7 @@ onMounted(async () => {
             </IonItem>
           </template>
         </IonList>
+        <CommentsSection type="projects" :id="project.id" />
       </template>
     </IonContent>
   </IonPage>

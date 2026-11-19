@@ -21,6 +21,7 @@ import {
   IonToolbar,
   toastController,
 } from '@ionic/vue'
+import CommentsSection from '@/components/CommentsSection.vue'
 import { cameraOutline, cloudOfflineOutline, navigateOutline } from 'ionicons/icons'
 import type { Note, TaskStatus } from '@dash4/shared'
 import { api } from '@/services/api'
@@ -208,6 +209,7 @@ async function onPhoto(event: Event): Promise<void> {
             </IonLabel>
           </IonItem>
         </IonList>
+        <CommentsSection type="tasks" :id="task.id" />
       </template>
     </IonContent>
   </IonPage>
