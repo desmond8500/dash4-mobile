@@ -8,6 +8,7 @@ import { visibleTabs } from '@/tabs'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useTechSpaceStore } from '@/stores/techSpace'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useMessagingStore } from '@/stores/messaging'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const auth = useAuthStore()
@@ -16,10 +17,16 @@ const router = useRouter()
 const requests = useClientRequestsStore()
 const techSpace = useTechSpaceStore()
 const notifications = useNotificationsStore()
+const messaging = useMessagingStore()
 
 // Compteur de l'onglet Demandes, lu dans la copie locale (fonctionne hors ligne)
 onMounted(async () => {
-  await Promise.all([requests.load(), techSpace.load()])
+  await Promise.all([requests.load(), techSpace.load(), messaging.load()])
+  void messaging.refresh()
+  // Pas de temps réel côté serveur : nouveaux messages relevés chaque minute
+  setInterval(() => {
+    if (sync.online) void messaging.refresh()
+  }, 60_000)
   void requests.refresh()
   void techSpace.refresh()
   void notifications.refresh()
@@ -43,6 +50,7 @@ function hrefFor(name: string): string {
         <IonTabButton v-for="tab in tabs" :key="tab.name" :tab="tab.name" :href="hrefFor(tab.name)">
           <IonIcon :icon="tab.icon" aria-hidden="true" />
           <IonLabel>{{ tab.label }}</IonLabel>
+          <IonBadge v-if="tab.name === 'messages' && messaging.unread" color="primary">{{ messaging.unread }}</IonBadge>
           <IonBadge v-if="tab.name === 'profile' && sync.pendingCount" color="warning">
             {{ sync.pendingCount }}
           </IonBadge>

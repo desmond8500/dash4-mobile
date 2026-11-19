@@ -121,12 +121,12 @@ describe('onglet Clients', () => {
     visibleTabs(type, (wanted) => wanted.some((p) => permissions.includes(p))).map((t) => t.name)
 
   it('apparaît pour un gestionnaire qui voit les clients', () => {
-    expect(names('manager', ['clients.view'])).toEqual(['home', 'clients', 'profile'])
-    expect(names('manager', [])).toEqual(['home', 'profile'])
+    expect(names('manager', ['clients.view'])).toEqual(['home', 'clients', 'messages', 'profile'])
+    expect(names('manager', [])).toEqual(['home', 'messages', 'profile'])
   })
 
   it("n'apparaît jamais pour un technicien", () => {
-    expect(names('technician', ['clients.view'])).toEqual(['home', 'profile'])
+    expect(names('technician', ['clients.view'])).toEqual(['home', 'messages', 'profile'])
   })
 })
 

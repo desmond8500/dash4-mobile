@@ -196,6 +196,17 @@ export const router = createRouter({
           meta: { permissions: ['sites.view', 'sites.view.own'] },
         },
         {
+          path: 'messages',
+          name: 'messages',
+          component: () => import('@/views/messages/MessagesPage.vue'),
+        },
+        {
+          path: 'messages/:conversationKey',
+          name: 'conversation',
+          component: () => import('@/views/messages/ConversationPage.vue'),
+          props: true,
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),
