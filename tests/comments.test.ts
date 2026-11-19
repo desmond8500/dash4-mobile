@@ -17,3 +17,13 @@ describe('commentaires sur le téléphone', () => {
     expect(mentionedIds(text, people)).toEqual([2])
   })
 })
+
+describe('notifications sur le téléphone', () => {
+  it('ouvre l\'écran de la fiche concernée', async () => {
+    const { notificationRoute } = await import('../src/utils/notifications')
+    const n = (patch: Record<string, unknown>) => ({ id: 'x', kind: 'comment.mention', title: '', body: '', read_at: null, created_at: null, ...patch })
+    expect(notificationRoute(n({ subject_type: 'tasks', subject_id: 4 }))).toEqual({ name: 'task', params: { id: 4 } })
+    expect(notificationRoute(n({ subject_type: 'brands', subject_id: 4 }))).toBeNull()
+    expect(notificationRoute(n({ kind: 'tech_share.received', tech_share_id: 9 }))).toEqual({ name: 'tech-share', params: { id: 9 } })
+  })
+})

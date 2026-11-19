@@ -15,6 +15,7 @@ import {
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
+  useIonRouter,
 } from '@ionic/vue'
 import { computed, onMounted } from 'vue'
 import { formatMoney } from '@dash4/shared'
@@ -22,21 +23,33 @@ import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { useInvoicesStore } from '@/stores/invoices'
 import { useTasksStore } from '@/stores/tasks'
+import { useNotificationsStore } from '@/stores/notifications'
+import { notificationRoute } from '@/utils/notifications'
+import type { AppNotification } from '@dash4/shared'
 import { isOnDay, isoDay } from '@/utils/tasks'
 
 const auth = useAuthStore()
 const sync = useSyncStore()
 const invoices = useInvoicesStore()
 const tasks = useTasksStore()
+const notifications = useNotificationsStore()
+const ionRouter = useIonRouter()
+
+async function openNotification(n: AppNotification): Promise<void> {
+  await notifications.markRead(n.id)
+  const target = notificationRoute(n)
+  if (target) ionRouter.push(target)
+}
 const todayCount = computed(() => tasks.mine.filter((t) => isOnDay(t, isoDay(new Date()))).length)
 
 onMounted(() => {
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
   void tasks.load().then(() => tasks.refresh()).catch(() => undefined)
+  void notifications.refresh()
 })
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined)])
+  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh()])
   await event.target.complete()
 }
 </script>
@@ -55,6 +68,15 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
       </IonRefresher>
 
       <h2>Bonjour {{ auth.user?.firstname }}</h2>
+
+      <IonCard v-if="notifications.unread.length">
+        <IonCardHeader><IonCardTitle>Notifications ({{ notifications.unread.length }})</IonCardTitle></IonCardHeader>
+        <IonCardContent class="notifications">
+          <IonItem v-for="n in notifications.unread.slice(0, 8)" :key="n.id" button lines="full" @click="openNotification(n)">
+            <IonLabel class="ion-text-wrap"><h3>{{ n.title }}</h3><p>{{ n.body }}</p></IonLabel>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
 
       <IonCard v-if="tasks.allowed()" button :router-link="{ name: 'tasks' }">
         <IonCardHeader>

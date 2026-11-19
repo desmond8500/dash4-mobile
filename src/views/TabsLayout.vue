@@ -7,6 +7,7 @@ import { useSyncStore } from '@/stores/sync'
 import { visibleTabs } from '@/tabs'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useTechSpaceStore } from '@/stores/techSpace'
+import { useNotificationsStore } from '@/stores/notifications'
 import OfflineBanner from '@/components/OfflineBanner.vue'
 
 const auth = useAuthStore()
@@ -14,12 +15,14 @@ const sync = useSyncStore()
 const router = useRouter()
 const requests = useClientRequestsStore()
 const techSpace = useTechSpaceStore()
+const notifications = useNotificationsStore()
 
 // Compteur de l'onglet Demandes, lu dans la copie locale (fonctionne hors ligne)
 onMounted(async () => {
   await Promise.all([requests.load(), techSpace.load()])
   void requests.refresh()
   void techSpace.refresh()
+  void notifications.refresh()
 })
 
 const tabs = computed(() =>
@@ -45,6 +48,9 @@ function hrefFor(name: string): string {
           </IonBadge>
           <IonBadge v-if="tab.name === 'client-requests' && requests.openCount" color="primary">
             {{ requests.openCount }}
+          </IonBadge>
+          <IonBadge v-if="tab.name === 'home' && notifications.unread.length" color="danger">
+            {{ notifications.unread.length }}
           </IonBadge>
           <IonBadge v-if="tab.name === 'tech-space' && techSpace.unread + techSpace.toDecide.length" color="primary">
             {{ techSpace.unread + techSpace.toDecide.length }}
