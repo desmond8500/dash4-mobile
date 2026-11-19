@@ -24,6 +24,8 @@ import { useSyncStore } from '@/stores/sync'
 import { useInvoicesStore } from '@/stores/invoices'
 import { useTasksStore } from '@/stores/tasks'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useDashboardStore } from '@/stores/dashboard'
+import { homeTiles } from '@/utils/dashboard'
 import { notificationRoute } from '@/utils/notifications'
 import type { AppNotification } from '@dash4/shared'
 import { isOnDay, isoDay } from '@/utils/tasks'
@@ -33,6 +35,8 @@ const sync = useSyncStore()
 const invoices = useInvoicesStore()
 const tasks = useTasksStore()
 const notifications = useNotificationsStore()
+const dashboard = useDashboardStore()
+const tiles = computed(() => homeTiles(dashboard.widgets))
 const ionRouter = useIonRouter()
 
 async function openNotification(n: AppNotification): Promise<void> {
@@ -46,10 +50,11 @@ onMounted(() => {
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
   void tasks.load().then(() => tasks.refresh()).catch(() => undefined)
   void notifications.refresh()
+  void dashboard.load().then(() => dashboard.refresh())
 })
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh()])
+  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh(), dashboard.refresh()])
   await event.target.complete()
 }
 </script>
@@ -94,13 +99,13 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </IonCardContent>
       </IonCard>
 
-      <IonCard v-if="auth.isTechnician">
-        <IonCardHeader>
-          <IonCardTitle>Espace technicien</IonCardTitle>
-        </IonCardHeader>
+      <IonCard v-if="tiles.length">
+        <IonCardHeader><IonCardTitle>En bref</IonCardTitle></IonCardHeader>
         <IonCardContent>
-          Vos tâches, vos demandes clients et vos dépenses fonctionnent même sans réseau. Informations de chantier,
-          rapports d'intervention et demandes d'accès arrivent dans les prochaines livraisons.
+          <IonItem v-for="t in tiles" :key="t.label" button lines="none" :detail="true" @click="ionRouter.push(t.route)">
+            <IonLabel>{{ t.label }}</IonLabel>
+            <IonNote slot="end" :color="t.tone">{{ t.value }}</IonNote>
+          </IonItem>
         </IonCardContent>
       </IonCard>
 
@@ -122,15 +127,9 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </IonCardContent>
       </IonCard>
 
-      <IonCard v-if="!auth.isTechnician">
-        <IonCardHeader>
-          <IonCardTitle>Espace gestionnaire</IonCardTitle>
-        </IonCardHeader>
-        <IonCardContent>
-          Clients, demandes, projets, devis, stock, tâches et dépenses sont consultables même sans réseau.
-          Les journaux d'intervention arrivent dans la prochaine livraison.
-        </IonCardContent>
-      </IonCard>
+      <p v-if="dashboard.updatedAt && !sync.online" class="ion-text-center">
+        <IonNote>Chiffres du {{ new Date(dashboard.updatedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) }} (hors ligne)</IonNote>
+      </p>
     </IonContent>
   </IonPage>
 </template>
