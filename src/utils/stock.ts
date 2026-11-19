@@ -47,3 +47,15 @@ export function scannerSupported(win: unknown = typeof window === 'undefined' ? 
   const w = win as { BarcodeDetector?: unknown; navigator?: { mediaDevices?: unknown } } | undefined
   return !!w?.BarcodeDetector && !!w.navigator?.mediaDevices
 }
+
+/** Emplacements où sont rangés ces articles, avec le nombre d'articles (pour filtrer sans réseau). */
+export function locationsOf(articles: Array<Pick<Article, 'storage_location_id' | 'location'>>): Array<{ id: number; name: string; count: number }> {
+  const byId = new Map<number, { id: number; name: string; count: number }>()
+  for (const a of articles) {
+    if (a.storage_location_id === null || a.storage_location_id === undefined) continue
+    const entry = byId.get(a.storage_location_id) ?? { id: a.storage_location_id, name: a.location ?? '', count: 0 }
+    entry.count++
+    byId.set(a.storage_location_id, entry)
+  }
+  return [...byId.values()].sort((x, y) => x.name.localeCompare(y.name, 'fr'))
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Article } from '@dash4/shared'
 import { TABS, visibleTabs } from '../src/tabs'
-import { findByCode, formatQty, projectedQuantity, scannerSupported, stockBadge } from '../src/utils/stock'
+import { findByCode, formatQty, locationsOf, projectedQuantity, scannerSupported, stockBadge } from '../src/utils/stock'
 
 const item = (type: string, quantity: number) => ({ payload: { type, quantity } })
 
@@ -40,5 +40,19 @@ describe('stock sur le téléphone', () => {
     expect(TABS.some((t) => t.name === 'stock')).toBe(true)
     expect(visibleTabs('manager', (p) => p.includes('stock.view')).map((t) => t.name)).toContain('stock')
     expect(visibleTabs('technician', (p) => p.includes('stock.view')).map((t) => t.name)).not.toContain('stock')
+  })
+
+  it('liste les emplacements des articles pour filtrer sans réseau', () => {
+    expect(
+      locationsOf([
+        { storage_location_id: 2, location: 'Étagère B' },
+        { storage_location_id: 1, location: 'Étagère A' },
+        { storage_location_id: 2, location: 'Étagère B' },
+        { storage_location_id: null, location: null },
+      ]),
+    ).toEqual([
+      { id: 1, name: 'Étagère A', count: 1 },
+      { id: 2, name: 'Étagère B', count: 2 },
+    ])
   })
 })

@@ -17,6 +17,8 @@ import {
   IonRefresherContent,
   IonSearchbar,
   IonSegment,
+  IonSelect,
+  IonSelectOption,
   IonSegmentButton,
   IonText,
   IonThumbnail,
@@ -28,7 +30,7 @@ import {
 import { barcodeOutline, cubeOutline } from 'ionicons/icons'
 import { useStockStore } from '@/stores/stock'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
-import { formatQty, scannerSupported, stockBadge } from '@/utils/stock'
+import { formatQty, locationsOf, scannerSupported, stockBadge } from '@/utils/stock'
 
 /** Stock : recherche et scan sans réseau, stock bas. */
 const store = useStockStore()
@@ -38,7 +40,14 @@ const search = ref('')
 const scanOpen = ref(false)
 const canScan = scannerSupported()
 
-const list = computed(() => store.search(search.value, segment.value === 'low' ? store.low : store.active).slice(0, 200))
+const locationId = ref<number | null>(null)
+const locations = computed(() => locationsOf(store.active))
+const list = computed(() =>
+  store
+    .search(search.value, segment.value === 'low' ? store.low : store.active)
+    .filter((a) => locationId.value === null || a.storage_location_id === locationId.value)
+    .slice(0, 200),
+)
 
 const syncedLabel = computed(() =>
   store.syncedAt
@@ -85,6 +94,12 @@ async function onCode(code: string): Promise<void> {
           <IonSegmentButton value="all"><IonLabel>Tous</IonLabel></IonSegmentButton>
           <IonSegmentButton value="low"><IonLabel>Stock bas ({{ store.low.length }})</IonLabel></IonSegmentButton>
         </IonSegment>
+      </IonToolbar>
+      <IonToolbar v-if="locations.length">
+        <IonSelect v-model="locationId" label="Emplacement" interface="action-sheet" cancel-text="Annuler" class="ion-padding-horizontal">
+          <IonSelectOption :value="null">Tous les emplacements</IonSelectOption>
+          <IonSelectOption v-for="l in locations" :key="l.id" :value="l.id">{{ l.name }} ({{ l.count }})</IonSelectOption>
+        </IonSelect>
       </IonToolbar>
     </IonHeader>
 
