@@ -77,7 +77,7 @@ export const useJournalsStore = defineStore('journals', () => {
   }
 
   async function create(payload: JournalPayload & { title: string; date: string }, photos: Blob[] = []): Promise<void> {
-    const item = await sync.enqueue({ type: 'journal', label: `Rapport : ${payload.title}`, method: 'POST', path: 'journals', payload: plain(payload) as Record<string, unknown> })
+    const item = await sync.enqueue({ type: 'journal', label: `Rapport : ${payload.title}`, method: 'POST', path: 'journals', payload: plain(payload) as unknown as Record<string, unknown> })
     if (photos.length) {
       await Promise.all(photos.map((p, i) => kv.set(photoKey(item.id, i), p)))
       pendingPhotos.value = { ...pendingPhotos.value, [item.id]: photos.length }
