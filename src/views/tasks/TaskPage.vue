@@ -133,6 +133,7 @@ async function onPhoto(event: Event): Promise<void> {
         <div v-if="task.can.progress" class="ion-padding-horizontal actions">
           <IonButton v-for="a in actions" :key="a.status" :color="a.color" @click="setStatus(a.status)">{{ a.label }}</IonButton>
           <IonButton v-if="auth.can('journals.create')" fill="outline" :router-link="{ name: 'journal-new', query: { task_id: task.id } }">Rédiger le rapport</IonButton>
+          <IonButton v-if="task.project_id && auth.canAny(['sites.view', 'sites.view.own'])" fill="outline" :router-link="{ name: 'site', params: { projectId: task.project_id } }">Équipements du chantier</IonButton>
         </div>
 
         <IonList inset>

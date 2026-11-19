@@ -21,6 +21,7 @@ import {
   IonToolbar,
   toastController,
 } from '@ionic/vue'
+import { useAuthStore } from '@/stores/auth'
 import CommentsSection from '@/components/CommentsSection.vue'
 import {
   cloudUploadOutline,
@@ -39,6 +40,7 @@ import { useQuotesStore } from '@/stores/quotes'
 import { directionsUrl, fileSize, periodLabel, projectStatusColor } from '@/utils/projects'
 
 const props = defineProps<{ id: string }>()
+const auth = useAuthStore()
 const store = useProjectsStore()
 const sync = useSyncStore()
 
@@ -133,6 +135,9 @@ onMounted(async () => {
               <p>{{ project.client?.name }}</p>
             </IonLabel>
             <IonBadge slot="end" :color="projectStatusColor(project.status.value)">{{ project.status.label }}</IonBadge>
+          </IonItem>
+          <IonItem v-if="auth.canAny(['sites.view', 'sites.view.own'])" :router-link="{ name: 'site', params: { projectId: project.id } }" detail>
+            <IonLabel>Chantier : systèmes et équipements</IonLabel>
           </IonItem>
           <IonItem v-if="project.client" :router-link="{ name: 'client', params: { id: project.client.id } }" detail>
             <IonLabel>Fiche du client</IonLabel>
