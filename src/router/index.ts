@@ -144,6 +144,25 @@ export const router = createRouter({
           meta: { permissions: ['tasks.view', 'tasks.view.own'] },
         },
         {
+          path: 'rapports',
+          name: 'journals',
+          component: () => import('@/views/journals/JournalsPage.vue'),
+          meta: { permissions: ['journals.view', 'journals.view.own'] },
+        },
+        {
+          path: 'rapports/nouveau',
+          name: 'journal-new',
+          component: () => import('@/views/journals/JournalFormPage.vue'),
+          meta: { permissions: ['journals.create'] },
+        },
+        {
+          path: 'rapports/:id(\\d+)',
+          name: 'journal',
+          component: () => import('@/views/journals/JournalPage.vue'),
+          props: true,
+          meta: { permissions: ['journals.view', 'journals.view.own'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfilePage.vue'),

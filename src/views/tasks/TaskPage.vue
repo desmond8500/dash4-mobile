@@ -26,6 +26,7 @@ import type { Note, TaskStatus } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useSyncStore } from '@/stores/sync'
 import { useTasksStore } from '@/stores/tasks'
+import { useAuthStore } from '@/stores/auth'
 import { pendingCreations } from '@/offline/collection'
 import { hours, taskColor } from '@/utils/tasks'
 
@@ -33,6 +34,7 @@ import { hours, taskColor } from '@/utils/tasks'
 const props = defineProps<{ id: string }>()
 const store = useTasksStore()
 const sync = useSyncStore()
+const auth = useAuthStore()
 
 const task = computed(() => store.find(Number(props.id)) ?? null)
 const notes = ref<Note[]>([])
@@ -129,6 +131,7 @@ async function onPhoto(event: Event): Promise<void> {
 
         <div v-if="task.can.progress" class="ion-padding-horizontal actions">
           <IonButton v-for="a in actions" :key="a.status" :color="a.color" @click="setStatus(a.status)">{{ a.label }}</IonButton>
+          <IonButton v-if="auth.can('journals.create')" fill="outline" :router-link="{ name: 'journal-new', query: { task_id: task.id } }">Rédiger le rapport</IonButton>
         </div>
 
         <IonList inset>
