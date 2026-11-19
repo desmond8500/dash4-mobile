@@ -57,6 +57,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Mise à jour locale (profil modifié hors ligne, en attente d'envoi). */
+  async function setLocal(next: CurrentUser): Promise<void> {
+    user.value = next
+    await kv.set(USER_KEY, JSON.parse(JSON.stringify(next)) as CurrentUser)
+  }
+
   async function login(payload: Omit<LoginPayload, 'device_name'>): Promise<CurrentUser> {
     const cached = await kv.get<CurrentUser>(USER_KEY)
     const response = await api.auth.login({ ...payload, device_name: 'Application mobile' })
@@ -85,5 +91,5 @@ export const useAuthStore = defineStore('auth', () => {
     await wipeLocalData()
   }
 
-  return { user, ready, isAuthenticated, isTechnician, can, canAny, init, refresh, login, logout, clear }
+  return { user, ready, isAuthenticated, isTechnician, can, canAny, init, refresh, setLocal, login, logout, clear }
 })
