@@ -2,7 +2,14 @@ import type { CurrentUser, ProfilePayload } from '@dash4/shared'
 
 /** Profil modifié localement en attendant l'envoi : le nom complet suit le prénom et le nom. */
 export function applyProfile(user: CurrentUser, payload: ProfilePayload): CurrentUser {
-  const next = { ...user, ...payload }
+  const { preferences, ...fields } = payload
+  const next = { ...user, ...fields }
+  if (preferences && user.preferences) {
+    next.preferences = {
+      theme: preferences.theme ?? user.preferences.theme,
+      notifications: { ...user.preferences.notifications, ...preferences.notifications },
+    }
+  }
   return { ...next, full_name: `${next.firstname} ${next.lastname}`.trim() }
 }
 

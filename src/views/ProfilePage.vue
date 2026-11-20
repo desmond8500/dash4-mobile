@@ -5,6 +5,9 @@ import {
   IonButton,
   IonInput,
   IonInputPasswordToggle,
+  IonSelect,
+  IonSelectOption,
+  IonToggle,
   IonChip,
   IonContent,
   IonHeader,
@@ -20,8 +23,8 @@ import {
   toastController,
   useIonRouter,
 } from '@ionic/vue'
-import { ApiError } from '@dash4/shared'
-import type { Cv } from '@dash4/shared'
+import { ApiError, NOTIFICATION_CATEGORIES, THEMES } from '@dash4/shared'
+import type { Cv, NotificationCategory, Theme } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
@@ -84,6 +87,14 @@ async function changePassword(): Promise<void> {
   } finally {
     pwdSaving.value = false
   }
+}
+
+// Préférences : enregistrées sur le téléphone, envoyées par la file d'attente
+async function setTheme(theme: Theme): Promise<void> {
+  await profile.save({ preferences: { theme } })
+}
+async function setNotification(category: NotificationCategory, on: boolean): Promise<void> {
+  await profile.save({ preferences: { notifications: { [category]: on } } })
 }
 
 async function openCv(cv: Cv): Promise<void> {
@@ -179,6 +190,21 @@ async function logout(): Promise<void> {
         <IonItem v-if="!profile.cvs.length">
           <IonLabel class="ion-text-wrap"><p>Aucun CV. Créez et modifiez vos CV depuis l'application web (Mon profil).</p></IonLabel>
         </IonItem>
+      </IonList>
+
+      <IonList v-if="auth.user?.preferences" inset>
+        <IonListHeader><IonLabel>Préférences</IonLabel></IonListHeader>
+        <IonItem>
+          <IonSelect :value="auth.user.preferences.theme" label="Thème" interface="popover" @ion-change="setTheme($event.detail.value)">
+            <IonSelectOption v-for="t in THEMES" :key="t.value" :value="t.value">{{ t.label }}</IonSelectOption>
+          </IonSelect>
+        </IonItem>
+        <IonItem v-for="c in NOTIFICATION_CATEGORIES" :key="c.value">
+          <IonToggle :checked="auth.user.preferences.notifications[c.value]" @ion-change="setNotification(c.value, $event.detail.checked)">
+            <span class="ion-text-wrap">{{ c.label }}</span>
+          </IonToggle>
+        </IonItem>
+        <IonItem lines="none"><IonNote>Les alertes de sécurité restent toujours actives.</IonNote></IonItem>
       </IonList>
 
       <IonList inset>

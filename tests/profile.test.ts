@@ -21,3 +21,16 @@ describe('profil hors ligne', () => {
     expect(profileChanges(user, { firstname: ' Awa ', lastname: 'Ndiaye', phone: '77 1', job_title: '' })).toEqual({ phone: '77 1', job_title: null })
   })
 })
+
+describe('préférences hors ligne', () => {
+  it('fusionne le changement avec les préférences connues', () => {
+    const withPrefs = {
+      ...user,
+      preferences: { theme: 'system', notifications: { mentions: true, tasks: true, requests: true, tech: true, expenses: true, stock: true, contracts: true } },
+    } as unknown as CurrentUser
+    const next = applyProfile(withPrefs, { preferences: { notifications: { stock: false } } })
+    expect(next.preferences?.notifications.stock).toBe(false)
+    expect(next.preferences?.notifications.tasks).toBe(true)
+    expect(applyProfile(withPrefs, { preferences: { theme: 'dark' } }).preferences?.theme).toBe('dark')
+  })
+})

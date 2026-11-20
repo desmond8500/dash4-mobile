@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ApiError, can as canFn, canAny as canAnyFn, isTechnician as isTechnicianFn } from '@dash4/shared'
 import type { CurrentUser, LoginPayload } from '@dash4/shared'
 import { api, tokenStorage } from '@/services/api'
 import { kv, wipeLocalData } from '@/offline/db'
+import { applyTheme } from '@/utils/theme'
 
 const USER_KEY = 'currentUser'
 
@@ -90,6 +91,9 @@ export const useAuthStore = defineStore('auth', () => {
     await tokenStorage.set(null)
     await wipeLocalData()
   }
+
+  // Thème du compte (préférences), appliqué dès qu'il est connu
+  watch(() => user.value?.preferences?.theme, (theme) => applyTheme(theme), { immediate: true })
 
   return { user, ready, isAuthenticated, isTechnician, can, canAny, init, refresh, setLocal, login, logout, clear }
 })
