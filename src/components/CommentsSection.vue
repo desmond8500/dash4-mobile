@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { IonButton, IonIcon, IonItem, IonLabel, IonList, IonListHeader, IonNote, IonText, IonTextarea, alertController } from '@ionic/vue'
-import { cameraOutline, closeCircle, cloudOfflineOutline, sendOutline, trashOutline } from 'ionicons/icons'
+import { cameraOutline, closeCircle, cloudOfflineOutline, createOutline, sendOutline, trashOutline } from 'ionicons/icons'
 import { filterMentionable, insertMention, mentionedIds, mentionQuery, splitMentions } from '@dash4/shared'
 import type { CommentableType, Mentionable } from '@dash4/shared'
 import { api } from '@/services/api'
@@ -72,6 +72,19 @@ async function send(): Promise<void> {
   cursor.value = 0
 }
 
+async function edit(id: number): Promise<void> {
+  const comment = thread.value.items.find((c) => c.id === id)
+  if (!comment) return
+  const alert = await alertController.create({
+    header: 'Modifier le commentaire',
+    inputs: [{ name: 'body', type: 'textarea', value: comment.body }],
+    buttons: [{ text: 'Annuler', role: 'cancel' }, { text: 'Enregistrer', role: 'confirm' }],
+  })
+  await alert.present()
+  const { role, data } = await alert.onDidDismiss()
+  if (role === 'confirm') await store.edit(props.type, props.id, comment, String(data?.values?.body ?? ''))
+}
+
 async function remove(id: number): Promise<void> {
   const comment = thread.value.items.find((c) => c.id === id)
   if (!comment) return
@@ -100,6 +113,7 @@ async function remove(id: number): Promise<void> {
         </div>
         <p><IonNote>{{ c.author?.full_name }} · {{ when(c.created_at) }}<template v-if="c.edited_at"> · modifié</template></IonNote></p>
       </IonLabel>
+      <IonButton v-if="c.can.update" slot="end" fill="clear" color="medium" aria-label="Modifier" @click="edit(c.id)"><IonIcon slot="icon-only" :icon="createOutline" /></IonButton>
       <IonButton v-if="c.can.delete" slot="end" fill="clear" color="medium" aria-label="Supprimer" @click="remove(c.id)"><IonIcon slot="icon-only" :icon="trashOutline" /></IonButton>
     </IonItem>
     <IonItem v-for="p in pending" :key="p.id">

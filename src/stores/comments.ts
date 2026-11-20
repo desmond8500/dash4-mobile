@@ -103,6 +103,15 @@ export const useCommentsStore = defineStore('comments', () => {
     await sync.enqueue({ type: 'comment', label: 'Commentaire supprimé', method: 'DELETE', path: `comments/${comment.id}`, payload: {} })
   }
 
+  /** Son propre commentaire corrigé : affiché tout de suite, envoyé par la file d'attente. */
+  async function edit(type: CommentableType, id: number, comment: Comment, body: string): Promise<void> {
+    const text = body.trim()
+    if (!text || text === comment.body) return
+    const t = thread(type, id)
+    await save(type, id, { ...t, items: t.items.map((c) => (c.id === comment.id ? { ...c, body: text, edited_at: new Date().toISOString() } : c)) })
+    await sync.enqueue({ type: 'comment', label: 'Commentaire modifié', method: 'PATCH', path: `comments/${comment.id}`, payload: { body: text } })
+  }
+
   /** Commentaires de cette fiche encore dans la file d'attente. */
   const pendingFor = (type: CommentableType, id: number) =>
     sync.pending.filter((p) => p.method === 'POST' && p.path === `${type}/${id}/comments`)
@@ -117,5 +126,5 @@ export const useCommentsStore = defineStore('comments', () => {
   sync.onFlushed(() => void uploadPhotos().catch(() => undefined))
   onWipe(reset)
 
-  return { threads, thread, load, refresh, add, remove, pendingFor, photosWaiting, reset }
+  return { threads, thread, load, refresh, add, remove, edit, pendingFor, photosWaiting, reset }
 })
