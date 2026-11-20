@@ -9,9 +9,12 @@ import {
   IonNote,
   IonPage,
   IonSpinner,
+  alertController,
+  toastController,
   useIonRouter,
 } from '@ionic/vue'
 import { ApiError } from '@dash4/shared'
+import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 
@@ -22,6 +25,27 @@ const ionRouter = useIonRouter()
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+/** Mot de passe oublié : le lien reçu par e-mail ouvre la page web, valable aussi pour les techniciens. */
+async function forgot(): Promise<void> {
+  const alert = await alertController.create({
+    header: 'Mot de passe oublié',
+    message: 'Vous recevrez par e-mail un lien pour choisir un nouveau mot de passe.',
+    inputs: [{ name: 'email', type: 'email', placeholder: 'Adresse e-mail', value: form.email }],
+    buttons: [{ text: 'Annuler', role: 'cancel' }, { text: 'Recevoir le lien', role: 'confirm' }],
+  })
+  await alert.present()
+  const { role, data } = await alert.onDidDismiss()
+  const email = (data?.values?.email as string | undefined)?.trim()
+  if (role !== 'confirm' || !email) return
+  let message: string
+  try {
+    message = await api.auth.forgotPassword(email)
+  } catch (e) {
+    message = e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : 'Impossible pour le moment. Réessayez.'
+  }
+  await (await toastController.create({ message, duration: 5000 })).present()
+}
 
 async function submit(): Promise<void> {
   error.value = null
@@ -78,6 +102,7 @@ async function submit(): Promise<void> {
           <IonSpinner v-if="loading" name="crescent" />
           <span v-else>Se connecter</span>
         </IonButton>
+        <IonButton fill="clear" expand="block" size="small" :disabled="!sync.online" @click="forgot">Mot de passe oublié ?</IonButton>
 
       </form>
     </IonContent>
