@@ -14,7 +14,7 @@ export function applyProfile(user: CurrentUser, payload: ProfilePayload): Curren
 }
 
 /** Seuls les champs changés partent au serveur. */
-export function profileChanges(user: CurrentUser, form: Required<ProfilePayload>): ProfilePayload {
+export function profileChanges(user: CurrentUser, form: Required<Omit<ProfilePayload, 'preferences'>>): ProfilePayload {
   const changes: ProfilePayload = {}
   if (form.firstname.trim() !== user.firstname) changes.firstname = form.firstname.trim()
   if (form.lastname.trim() !== user.lastname) changes.lastname = form.lastname.trim()
