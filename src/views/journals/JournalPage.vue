@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
@@ -77,7 +78,7 @@ onMounted(async () => {
         </IonList>
         <IonList v-for="s in journal.sections ?? []" :key="s.id ?? s.title" inset>
           <IonListHeader><IonLabel>{{ s.title }}</IonLabel></IonListHeader>
-          <IonItem><IonLabel class="ion-text-wrap pre">{{ s.body }}</IonLabel></IonItem>
+          <IonItem><IonLabel class="ion-text-wrap"><MarkdownView :text="s.body" /></IonLabel></IonItem>
           <div v-if="s.id && sectionPhotos[s.id]?.length" class="photos ion-padding">
             <img v-for="p in sectionPhotos[s.id]" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(sectionPhotos[s.id]!, p.url)" />
           </div>

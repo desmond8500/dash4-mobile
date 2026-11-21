@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
@@ -166,7 +167,7 @@ async function onPhoto(event: Event): Promise<void> {
         </IonList>
 
         <IonList v-if="task.description" inset>
-          <IonItem><IonLabel class="ion-text-wrap pre">{{ task.description }}</IonLabel></IonItem>
+          <IonItem><IonLabel class="ion-text-wrap"><MarkdownView :text="task.description" /></IonLabel></IonItem>
         </IonList>
 
         <IonList v-if="task.subtasks.length" inset>

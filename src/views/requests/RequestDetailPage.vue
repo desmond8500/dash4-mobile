@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted } from 'vue'
 import {
   IonBackButton,
@@ -77,7 +78,7 @@ onMounted(() => store.load())
             <IonBadge v-if="request.priority.value === 'high'" color="danger">Urgente</IonBadge>
             <IonBadge v-if="isOverdue(request)" color="danger">En retard</IonBadge>
           </div>
-          <p class="body">{{ request.body }}</p>
+          <MarkdownView class="body" :text="request.body" />
         </div>
 
         <IonList inset>

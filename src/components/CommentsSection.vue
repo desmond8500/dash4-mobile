@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import { IonButton, IonIcon, IonItem, IonLabel, IonList, IonListHeader, IonNote, IonText, IonTextarea, alertController } from '@ionic/vue'
 import { cameraOutline, closeCircle, cloudOfflineOutline, createOutline, sendOutline, trashOutline } from 'ionicons/icons'
-import { filterMentionable, insertMention, mentionedIds, mentionQuery, splitMentions } from '@dash4/shared'
+import { filterMentionable, insertMention, mentionedIds, mentionQuery } from '@dash4/shared'
 import type { CommentableType, Mentionable } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useCommentsStore } from '@/stores/comments'
@@ -104,7 +105,7 @@ async function remove(id: number): Promise<void> {
     <IonListHeader><IonLabel>Commentaires</IonLabel></IonListHeader>
     <IonItem v-for="c in thread.items" :key="c.id">
       <IonLabel class="ion-text-wrap">
-        <p class="body"><template v-for="(part, i) in splitMentions(c.body, c.mentions ?? [])" :key="i"><strong v-if="part.mention" class="mention">{{ part.text }}</strong><template v-else>{{ part.text }}</template></template></p>
+        <MarkdownView class="body" :text="c.body" :mentions="(c.mentions ?? []).map((m) => m.full_name)" />
         <div v-if="c.files?.length" class="photos">
           <template v-for="f in c.files" :key="f.id">
             <img v-if="thumbs[f.id]" :src="thumbs[f.id]" :alt="f.name" @click="openComment(c.files ?? [], f.id)" />
@@ -119,7 +120,7 @@ async function remove(id: number): Promise<void> {
     <IonItem v-for="p in pending" :key="p.id">
       <IonIcon slot="start" :icon="cloudOfflineOutline" color="medium" />
       <IonLabel class="ion-text-wrap">
-        <p class="body">{{ p.payload.body }}</p>
+        <MarkdownView class="body" :text="p.payload.body" />
         <p v-if="store.photosWaiting(p.id)"><IonNote>{{ store.photosWaiting(p.id) }} photo(s)</IonNote></p>
         <p v-if="p.lastError"><IonText color="danger">{{ p.lastError }}</IonText></p>
       </IonLabel>

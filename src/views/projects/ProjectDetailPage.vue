@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
@@ -155,7 +156,7 @@ onMounted(async () => {
             <IonLabel class="ion-text-wrap">{{ project.address || 'Itinéraire vers le chantier' }}</IonLabel>
           </IonItem>
           <IonItem v-if="project.description">
-            <IonLabel class="ion-text-wrap pre">{{ project.description }}</IonLabel>
+            <IonLabel class="ion-text-wrap"><MarkdownView :text="project.description" /></IonLabel>
           </IonItem>
         </IonList>
 
@@ -172,14 +173,14 @@ onMounted(async () => {
           <IonItem v-for="item in pendingNotes" :key="item.id">
             <IonIcon slot="start" :icon="cloudUploadOutline" color="warning" aria-hidden="true" />
             <IonLabel class="ion-text-wrap">
-              <p class="pre body">{{ item.payload.body }}</p>
+              <MarkdownView class="body" :text="item.payload.body" />
               <p>{{ item.lastError ?? "En attente d'envoi" }}</p>
             </IonLabel>
           </IonItem>
           <IonItem v-for="note in project.notes ?? []" :key="note.id">
             <IonIcon v-if="note.is_pinned" slot="start" :icon="pinOutline" color="primary" aria-label="Épinglée" />
             <IonLabel class="ion-text-wrap">
-              <p class="pre body">{{ note.body }}</p>
+              <MarkdownView class="body" :text="note.body" />
               <p>
                 {{ note.creator?.full_name ?? '—' }} ·
                 {{ note.created_at ? new Date(note.created_at).toLocaleDateString('fr-FR') : '' }}

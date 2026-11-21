@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
@@ -140,7 +141,7 @@ onMounted(async () => {
 
         <IonList v-if="quote.payment_terms" inset>
           <IonListHeader><IonLabel>Modalités de paiement</IonLabel></IonListHeader>
-          <IonItem><IonLabel class="ion-text-wrap pre">{{ quote.payment_terms }}</IonLabel></IonItem>
+          <IonItem><IonLabel class="ion-text-wrap"><MarkdownView :text="quote.payment_terms" /></IonLabel></IonItem>
         </IonList>
       </template>
     </IonContent>

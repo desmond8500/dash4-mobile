@@ -35,3 +35,23 @@
 .pswp__top-bar {
   top: env(safe-area-inset-top);
 }
+
+/* Texte mis en forme (Markdown) */
+.md {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  white-space: normal;
+}
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md blockquote { margin: 0 0 0.5rem; }
+.md h1, .md h2, .md h3 { margin: 0.6rem 0 0.25rem; line-height: 1.25; }
+.md h1 { font-size: 1.15rem; }
+.md h2 { font-size: 1.05rem; }
+.md h3 { font-size: 1rem; }
+.md ul, .md ol { padding-left: 1.25rem; }
+.md li.md-task { list-style: none; margin-left: -1.25rem; }
+.md blockquote { border-left: 3px solid var(--ion-color-medium); padding-left: 0.6rem; color: var(--ion-color-medium-shade); }
+.md code { background: var(--ion-color-light); border-radius: 4px; padding: 0 0.25rem; font-size: 0.9em; }
+.md hr { border: none; border-top: 1px solid var(--ion-color-light-shade); margin: 0.6rem 0; }
+.md .mention { color: var(--ion-color-primary); font-weight: 600; }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { markdownToText } from '@dash4/shared'
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted } from 'vue'
 import {
   IonBackButton,
@@ -113,7 +115,7 @@ onMounted(() => {
             <IonNote v-if="email.label" slot="end">{{ email.label }}</IonNote>
           </IonItem>
           <IonItem v-if="client.description">
-            <IonLabel class="ion-text-wrap notes">{{ client.description }}</IonLabel>
+            <IonLabel class="ion-text-wrap"><MarkdownView :text="client.description" /></IonLabel>
           </IonItem>
         </IonList>
 
@@ -148,7 +150,7 @@ onMounted(() => {
             detail
           >
             <IonLabel class="ion-text-wrap">
-              <h3>{{ r.body }}</h3>
+              <h3>{{ markdownToText(r.body) }}</h3>
               <p>{{ r.status.label }} · {{ r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : '' }}</p>
             </IonLabel>
           </IonItem>
