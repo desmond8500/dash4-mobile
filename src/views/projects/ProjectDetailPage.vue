@@ -173,7 +173,7 @@ onMounted(async () => {
           <IonItem v-for="item in pendingNotes" :key="item.id">
             <IonIcon slot="start" :icon="cloudUploadOutline" color="warning" aria-hidden="true" />
             <IonLabel class="ion-text-wrap">
-              <MarkdownView class="body" :text="item.payload.body" />
+              <MarkdownView class="body" :text="String(item.payload.body ?? '')" />
               <p>{{ item.lastError ?? "En attente d'envoi" }}</p>
             </IonLabel>
           </IonItem>

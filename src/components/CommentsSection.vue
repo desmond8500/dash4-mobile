@@ -120,7 +120,7 @@ async function remove(id: number): Promise<void> {
     <IonItem v-for="p in pending" :key="p.id">
       <IonIcon slot="start" :icon="cloudOfflineOutline" color="medium" />
       <IonLabel class="ion-text-wrap">
-        <MarkdownView class="body" :text="p.payload.body" />
+        <MarkdownView class="body" :text="String(p.payload.body ?? '')" />
         <p v-if="store.photosWaiting(p.id)"><IonNote>{{ store.photosWaiting(p.id) }} photo(s)</IonNote></p>
         <p v-if="p.lastError"><IonText color="danger">{{ p.lastError }}</IonText></p>
       </IonLabel>
