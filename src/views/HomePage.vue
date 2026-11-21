@@ -22,6 +22,7 @@ import { formatMoney } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { useInvoicesStore } from '@/stores/invoices'
+import { useFleetStore } from '@/stores/fleet'
 import { useTasksStore } from '@/stores/tasks'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -33,6 +34,7 @@ import { isOnDay, isoDay } from '@/utils/tasks'
 const auth = useAuthStore()
 const sync = useSyncStore()
 const invoices = useInvoicesStore()
+const fleet = useFleetStore()
 const tasks = useTasksStore()
 const notifications = useNotificationsStore()
 const dashboard = useDashboardStore()
@@ -48,13 +50,14 @@ const todayCount = computed(() => tasks.mine.filter((t) => isOnDay(t, isoDay(new
 
 onMounted(() => {
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
+  void fleet.load().then(() => fleet.refresh()).catch(() => undefined)
   void tasks.load().then(() => tasks.refresh()).catch(() => undefined)
   void notifications.refresh()
   void dashboard.load().then(() => dashboard.refresh())
 })
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh(), dashboard.refresh()])
+  await Promise.all([auth.refresh(), sync.flush(), invoices.refresh().catch(() => undefined), fleet.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh(), dashboard.refresh()])
   await event.target.complete()
 }
 </script>
@@ -105,6 +108,18 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           <IonItem v-for="t in tiles" :key="t.label" button lines="none" :detail="true" @click="ionRouter.push(t.route)">
             <IonLabel>{{ t.label }}</IonLabel>
             <IonNote slot="end" :color="t.tone">{{ t.value }}</IonNote>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
+
+      <IonCard v-if="fleet.allowed() && fleet.visible.length" button :router-link="{ name: 'vehicles' }">
+        <IonCardHeader>
+          <IonCardTitle>{{ fleet.visible.length === 1 ? 'Mon véhicule' : 'Véhicules' }}</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonItem lines="none">
+            <IonLabel>{{ fleet.visible.length === 1 ? fleet.visible[0]!.name : `${fleet.visible.length} véhicules` }}</IonLabel>
+            <IonNote slot="end" :color="fleet.alertsCount ? 'warning' : undefined">{{ fleet.alertsCount ? `${fleet.alertsCount} à surveiller` : 'Rien à signaler' }}</IonNote>
           </IonItem>
         </IonCardContent>
       </IonCard>

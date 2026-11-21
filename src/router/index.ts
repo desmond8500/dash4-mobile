@@ -93,6 +93,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'vehicules',
+          name: 'vehicles',
+          component: () => import('@/views/fleet/VehiclesPage.vue'),
+          meta: { accountTypes: ['manager', 'technician'], permissions: ['vehicles.view', 'vehicles.view.own'] },
+        },
+        {
+          path: 'vehicules/:id(\\d+)',
+          name: 'vehicle',
+          component: () => import('@/views/fleet/VehiclePage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager', 'technician'], permissions: ['vehicles.view', 'vehicles.view.own'] },
+        },
+        {
           path: 'factures',
           name: 'invoices',
           component: () => import('@/views/invoices/InvoicesPage.vue'),
