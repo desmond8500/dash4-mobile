@@ -138,11 +138,16 @@ export function applyEquipment(site: Site, payload: EquipmentPayload & { install
     }
     return { ...s, equipment: [...kept, item, ...children] }
   })
-  return { ...site, systems, equipment_count: systems.reduce((n, s) => n + (s.equipment?.length ?? 0), 0) }
+  return { ...site, systems, equipment_count: countUnits(systems) }
 }
 
 /** Retire l'équipement et ses sous-équipements du chantier gardé sur le téléphone. */
 export function removeEquipment(site: Site, id: number): Site {
   const systems = site.systems.map((s) => ({ ...s, equipment: (s.equipment ?? []).filter((e) => e.id !== id && e.parent_id !== id) }))
-  return { ...site, systems, equipment_count: systems.reduce((n, s) => n + (s.equipment?.length ?? 0), 0) }
+  return { ...site, systems, equipment_count: countUnits(systems) }
+}
+
+/** Nombre d'appareils du chantier, comme l'API : somme des quantités. */
+export function countUnits(systems: Site['systems']): number {
+  return systems.reduce((n, s) => n + (s.equipment ?? []).reduce((m, e) => m + e.quantity, 0), 0)
 }

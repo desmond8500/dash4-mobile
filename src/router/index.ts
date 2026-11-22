@@ -86,6 +86,13 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['projects.view', 'projects.view.own'] },
         },
         {
+          path: 'devis/:id(\\d+)/chantier',
+          name: 'quote-site',
+          component: () => import('@/views/quotes/QuoteSitePage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager'], permissions: ['sites.update', 'sites.update.own'] },
+        },
+        {
           path: 'devis/:id(\\d+)',
           name: 'quote',
           component: () => import('@/views/quotes/QuoteDetailPage.vue'),

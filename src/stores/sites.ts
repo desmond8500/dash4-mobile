@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ApiError, EQUIPMENT_STATUSES, type EquipmentPayload, type EquipmentStatus, type Plan, type Site } from '@dash4/shared'
+import { ApiError, EQUIPMENT_STATUSES, splitEquipmentLocally, type EquipmentPayload, type QuoteSitePayload, type EquipmentStatus, type Plan, type Site } from '@dash4/shared'
 import { api } from '@/services/api'
 import { kv, onWipe } from '@/offline/db'
 import { plain } from '@/offline/collection'
@@ -127,6 +127,23 @@ export const useSitesStore = defineStore('sites', () => {
     await save(projectId, removeEquipment(site, equipmentId))
   }
 
+  /** Éclate un groupe en appareils identiques de quantité 1 (copies provisoires jusqu'à l'envoi). */
+  async function splitEquipment(projectId: number, equipmentId: number): Promise<void> {
+    const site = sites.value[projectId]
+    const equipment = site?.systems.flatMap((s) => s.equipment ?? []).find((e) => e.id === equipmentId)
+    if (!site || !equipment || equipment.id < 0 || equipment.quantity <= 1) return
+    await sync.enqueue({ type: 'equipment', label: `Groupe éclaté : ${equipment.quantity} × ${equipment.name}`, method: 'POST', path: `equipment/${equipmentId}/split`, payload: {} })
+    touched.add(projectId)
+    const base = -Date.now()
+    await save(projectId, splitEquipmentLocally(site, equipmentId, (i) => base - i))
+  }
+
+  /** Appareils créés depuis un devis : envoyés dès que possible, puis le chantier est rechargé. */
+  async function fromQuote(projectId: number, quote: { id: number; number: string }, payload: QuoteSitePayload, count: number): Promise<void> {
+    await sync.enqueue({ type: 'equipment', label: `Devis ${quote.number} vers le chantier : ${count} appareil${count > 1 ? 's' : ''}`, method: 'POST', path: `quotes/${quote.id}/site-equipment`, payload: { ...payload } })
+    touched.add(projectId)
+  }
+
   /** Plans du chantier (liste et repères), gardés avec le chantier. */
   async function loadPlans(projectId: number): Promise<void> {
     if (!plans.value[projectId]) {
@@ -165,5 +182,5 @@ export const useSitesStore = defineStore('sites', () => {
 
   onWipe(reset)
 
-  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, saveEquipment, deleteEquipment, reset }
+  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, saveEquipment, deleteEquipment, splitEquipment, fromQuote, reset }
 })

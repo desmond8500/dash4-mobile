@@ -4,7 +4,10 @@ import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
   IonBadge,
+  IonButton,
   IonButtons,
+  IonSegment,
+  IonSegmentButton,
   IonContent,
   IonHeader,
   IonItem,
@@ -18,7 +21,8 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
-import { formatMoney, type Quote } from '@dash4/shared'
+import { formatMoney, groupLinesByCategory, type Quote, type QuoteLine } from '@dash4/shared'
+import { kv } from '@/offline/db'
 import { useAuthStore } from '@/stores/auth'
 import { useQuotesStore } from '@/stores/quotes'
 import { useInvoicesStore } from '@/stores/invoices'
@@ -40,6 +44,19 @@ const error = ref<string | null>(null)
 const showPrices = computed(() => auth.can('prices.view'))
 const money = (v: number | undefined) => (v === undefined ? '' : formatMoney(v))
 const qty = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
+
+// Ordre des lignes : celui du devis, ou par catégorie (centrales, organes, accessoires, câbles…) ; choix gardé
+const ORDER_KEY = 'quotes.lineOrder'
+const order = ref<'quote' | 'category'>('quote')
+void kv.get<'quote' | 'category'>(ORDER_KEY).then((v) => v && (order.value = v))
+function setOrder(value: 'quote' | 'category'): void {
+  order.value = value
+  void kv.set(ORDER_KEY, value)
+}
+const groupsOf = (lines: QuoteLine[]) => (order.value === 'category' ? groupLinesByCategory(lines) : [{ category: null, label: null, lines }])
+
+// Vers le chantier : gestionnaires du chantier, devis rattaché à un projet
+const canToSite = computed(() => !!quote.value?.project_id && auth.canAny(['sites.update', 'sites.update.own']))
 
 onMounted(async () => {
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
@@ -112,12 +129,22 @@ onMounted(async () => {
           </template>
         </IonList>
 
+        <div class="ion-padding-horizontal tools">
+          <IonSegment :value="order" @ion-change="setOrder($event.detail.value as 'quote' | 'category')">
+            <IonSegmentButton value="quote"><IonLabel>Ordre du devis</IonLabel></IonSegmentButton>
+            <IonSegmentButton value="category"><IonLabel>Par catégorie</IonLabel></IonSegmentButton>
+          </IonSegment>
+          <IonButton v-if="canToSite" expand="block" fill="outline" :router-link="{ name: 'quote-site', params: { id: quote.id } }">Créer les appareils du chantier</IonButton>
+        </div>
+
         <IonList v-for="section in (quote.sections ?? []).filter((s) => s.is_visible)" :key="section.id" inset>
           <IonListHeader>
             <IonLabel>{{ section.title }}</IonLabel>
             <IonNote v-if="showPrices" class="ion-padding-end">{{ money(section.subtotal) }}</IonNote>
           </IonListHeader>
-          <IonItem v-for="line in section.lines" :key="line.id">
+          <template v-for="group in groupsOf(section.lines)" :key="group.category ?? 'all'">
+          <IonItem v-if="group.label" lines="none" class="category"><IonLabel color="medium">{{ group.label }} · {{ group.lines.length }}</IonLabel></IonItem>
+          <IonItem v-for="line in group.lines" :key="line.id">
             <IonLabel class="ion-text-wrap">
               <h3>{{ line.designation }}</h3>
               <p v-if="line.reference">{{ line.reference }}</p>
@@ -128,6 +155,7 @@ onMounted(async () => {
             </IonLabel>
             <IonNote v-if="showPrices" slot="end">{{ money(line.line_total) }}</IonNote>
           </IonItem>
+          </template>
           <IonItem v-if="!section.lines.length"><IonLabel color="medium">Aucune ligne.</IonLabel></IonItem>
         </IonList>
 
@@ -149,6 +177,20 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.category {
+  --min-height: 2rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .pre {
   white-space: pre-line;
 }

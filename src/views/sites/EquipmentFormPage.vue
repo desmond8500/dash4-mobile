@@ -113,6 +113,26 @@ async function save(again = false): Promise<void> {
   router.back()
 }
 
+/** Éclater le groupe : autant d'appareils de quantité 1 que la quantité, avec les mêmes informations. */
+async function split(): Promise<void> {
+  const e = existing.value
+  if (!e || e.quantity <= 1) return
+  const alert = await alertController.create({
+    header: 'Éclater le groupe',
+    message: `Créer ${e.quantity} appareils « ${e.name} » de quantité 1, avec les mêmes informations ? Le n° de série et les sous-équipements restent sur le premier.`,
+    buttons: [
+      { text: 'Annuler', role: 'cancel' },
+      { text: `Éclater en ${e.quantity}`, role: 'confirm' },
+    ],
+  })
+  await alert.present()
+  if ((await alert.onDidDismiss()).role !== 'confirm') return
+  await store.splitEquipment(projectId.value, e.id)
+  const toast = await toastController.create({ message: sync.online ? `${e.quantity} appareils créés.` : `${e.quantity} appareils créés : envoyés dès le retour du réseau.`, duration: 2000, position: 'top' })
+  await toast.present()
+  router.back()
+}
+
 async function remove(): Promise<void> {
   const e = existing.value
   if (!e) return
@@ -214,6 +234,7 @@ async function remove(): Promise<void> {
         <div class="ion-padding actions">
           <IonButton expand="block" type="submit">Enregistrer</IonButton>
           <IonButton expand="block" fill="outline" @click="save(true)">{{ existing ? 'Enregistrer et dupliquer' : 'Enregistrer et en ajouter un autre' }}</IonButton>
+          <IonButton v-if="existing && existing.quantity > 1" expand="block" fill="outline" color="secondary" @click="split">Éclater en {{ existing.quantity }} appareils identiques</IonButton>
           <IonButton v-if="existing && site.can.delete" expand="block" fill="clear" color="danger" @click="remove">Supprimer l'équipement</IonButton>
         </div>
       </form>
