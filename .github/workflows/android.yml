@@ -41,15 +41,35 @@ jobs:
       - run: npm run build
       - run: npx cap add android
       - run: npx cap sync android
-      - run: bash scripts/android-prepare.sh
-
-      # Sans clé fournie : APK signé avec une clé de débogage gardée en cache, pour que les mises à jour
-      # s'installent par-dessus la version précédente
-      - uses: actions/cache@v4
-        if: env.SIGNED != '1'
+      # Clé de signature : celle des secrets du dépôt si elle existe ; sinon une clé créée une fois puis
+      # gardée en cache, pour que chaque nouvelle version s'installe par-dessus la précédente
+      - name: Clé gardée en cache
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: dash4-android-debug-keystore
+          path: ~/.dash4-signing
+          key: dash4-signing-v1
+
+      - name: Clé de signature
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        run: |
+          mkdir -p ~/.dash4-signing
+          KS=~/.dash4-signing/dash4.keystore
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -noprompt -keystore "$KS" -alias dash4 -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass dash4-apk -keypass dash4-apk -dname "CN=Dash4, O=Yonkou, C=SN"
+            echo "Nouvelle clé créée (première construction ou cache expiré)."
+          else
+            echo "Clé reprise du cache."
+          fi
+          {
+            echo "ANDROID_KEYSTORE_BASE64=$(base64 -w0 "$KS")"
+            echo "ANDROID_KEYSTORE_PASSWORD=dash4-apk"
+            echo "ANDROID_KEY_ALIAS=dash4"
+            echo "ANDROID_KEY_PASSWORD=dash4-apk"
+          } >> "$GITHUB_ENV"
+
+      - run: bash scripts/android-prepare.sh
 
       - name: Compilation
         working-directory: android
