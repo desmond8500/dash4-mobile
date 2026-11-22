@@ -19,7 +19,7 @@ import {
   IonToolbar,
 } from '@ionic/vue'
 import { add, chevronBack, chevronForward, remove } from 'ionicons/icons'
-import { markerColor, planSymbol, placeLabel, visibleMarkers } from '@dash4/shared'
+import { codeFontSize, markerColor, planSymbol, placeLabel, visibleMarkers } from '@dash4/shared'
 import type { PlanMarker } from '@dash4/shared'
 import { useSitesStore } from '@/stores/sites'
 import { usePlanIconsStore } from '@/stores/planIcons'
@@ -107,6 +107,20 @@ onBeforeUnmount(() => image.value && URL.revokeObjectURL(image.value.url))
             <img v-if="iconOf(m)?.file_path && icons.images[iconOf(m)!.id]" :src="icons.images[iconOf(m)!.id]" alt="" class="glyph" :style="{ transform: `rotate(${m.rotation ?? 0}deg)` }" />
             <svg v-else class="glyph" viewBox="-1 -1 26 26" aria-hidden="true" :style="{ transform: `rotate(${m.rotation ?? 0}deg)` }">
               <path :d="planSymbol(iconOf(m)?.symbol).path" fill-rule="evenodd" :fill="markerColor(m, iconOf(m))" stroke="#fff" stroke-width="1.4" paint-order="stroke" />
+              <template v-if="iconOf(m)?.secondary_color">
+                <clipPath :id="`half-${m.id}`"><rect x="-1" y="12" width="26" height="13" /></clipPath>
+                <path :d="planSymbol(iconOf(m)?.symbol).path" fill-rule="evenodd" :fill="iconOf(m)!.secondary_color!" :clip-path="`url(#half-${m.id})`" />
+              </template>
+              <text
+                v-if="iconOf(m)?.code"
+                x="12"
+                :y="12 + codeFontSize(iconOf(m)!.code, iconOf(m)!.symbol) * 0.36"
+                text-anchor="middle"
+                font-family="Arial, Helvetica, sans-serif"
+                font-weight="700"
+                :font-size="codeFontSize(iconOf(m)!.code, iconOf(m)!.symbol)"
+                :fill="iconOf(m)!.text_color ?? '#ffffff'"
+              >{{ iconOf(m)!.code }}</text>
             </svg>
             <span v-if="showLabel(m)">{{ m.label ?? equipment(m.equipment_id)?.name ?? '' }}</span>
           </button>
