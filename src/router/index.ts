@@ -169,6 +169,13 @@ export const router = createRouter({
           meta: { permissions: ['journals.create'] },
         },
         {
+          path: 'rapports/:id(\\d+)/modifier',
+          name: 'journal-edit',
+          component: () => import('@/views/journals/JournalFormPage.vue'),
+          props: true,
+          meta: { permissions: ['journals.update', 'journals.update.own'] },
+        },
+        {
           path: 'rapports/:id(\\d+)',
           name: 'journal',
           component: () => import('@/views/journals/JournalPage.vue'),

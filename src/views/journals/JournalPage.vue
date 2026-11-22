@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
   IonBadge,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -59,6 +60,9 @@ onMounted(async () => {
       <IonToolbar>
         <IonButtons slot="start"><IonBackButton default-href="/rapports" text="Retour" /></IonButtons>
         <IonTitle>{{ journal?.title ?? 'Rapport' }}</IonTitle>
+        <IonButtons v-if="journal?.can.update" slot="end">
+          <IonButton :router-link="{ name: 'journal-edit', params: { id: journal.id } }">Modifier</IonButton>
+        </IonButtons>
       </IonToolbar>
     </IonHeader>
     <IonContent>
@@ -72,8 +76,13 @@ onMounted(async () => {
         <IonList inset>
           <IonItem v-if="journal.project"><IonLabel>Projet</IonLabel><IonNote slot="end">{{ journal.project.name }}</IonNote></IonItem>
           <IonItem v-if="journal.client"><IonLabel>Client</IonLabel><IonNote slot="end">{{ journal.client.name }}</IonNote></IonItem>
-          <IonItem v-if="journal.participants?.length">
-            <IonLabel class="ion-text-wrap"><p>Intervenants</p><h3>{{ journal.participants.map((p) => p.name).join(', ') }}</h3></IonLabel>
+          <IonItem v-if="journal.task"><IonLabel>Tâche</IonLabel><IonNote slot="end">{{ journal.task.title }}</IonNote></IonItem>
+        </IonList>
+        <IonList v-if="journal.participants?.length" inset>
+          <IonListHeader><IonLabel>Intervenants</IonLabel></IonListHeader>
+          <IonItem v-for="p in journal.participants" :key="p.id">
+            <IonLabel class="ion-text-wrap"><h3>{{ p.name }}</h3><p v-if="p.role">{{ p.role }}</p></IonLabel>
+            <IonNote slot="end">{{ { team: 'Équipe', contact: 'Client', other: 'Autre' }[p.kind] }}</IonNote>
           </IonItem>
         </IonList>
         <IonList v-for="s in journal.sections ?? []" :key="s.id ?? s.title" inset>
@@ -87,7 +96,7 @@ onMounted(async () => {
         <div v-if="photos.length" class="photos ion-padding">
           <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(photos, p.url)" />
         </div>
-        <p v-else-if="store.photosWaiting(journal.client_uuid)" class="ion-padding"><IonNote>{{ store.photosWaiting(journal.client_uuid) }} photo(s) en attente d'envoi.</IonNote></p>
+        <p v-else-if="store.photosWaiting(journal.client_uuid, journal.id)" class="ion-padding"><IonNote>{{ store.photosWaiting(journal.client_uuid, journal.id) }} photo(s) en attente d'envoi.</IonNote></p>
         <CommentsSection type="journals" :id="journal.id" />
       </template>
     </IonContent>
