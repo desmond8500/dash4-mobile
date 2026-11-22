@@ -8,6 +8,7 @@ import { useAuthStore } from './auth'
 import { useSyncStore } from './sync'
 import { canUseCachedPlan } from '@/utils/sites'
 import { applyEquipment, removeEquipment } from '@/utils/equipment'
+import { staleFileIds } from '@/utils/plans'
 
 const key = (projectId: number) => `sites.${projectId}`
 
@@ -159,6 +160,70 @@ export const useSitesStore = defineStore('sites', () => {
     }
   }
 
+  // --- Tous les plans visibles (page Plans) et fichiers gardés sur le téléphone -------------------------
+  const ALL_KEY = 'sites.plans.all'
+  const FILES_KEY = 'sites.planfiles'
+  const allPlans = ref<Plan[]>([])
+  /** Fichiers gardés : numéro du plan → `updated_at` de la version gardée. */
+  const files = ref<Record<string, string | null>>({})
+  const plansLoaded = ref(false)
+  const plansSyncing = ref(false)
+
+  async function loadAllPlans(): Promise<void> {
+    if (!plansLoaded.value) {
+      allPlans.value = (await kv.get<Plan[]>(ALL_KEY)) ?? []
+      files.value = (await kv.get<Record<string, string | null>>(FILES_KEY)) ?? {}
+      plansLoaded.value = true
+    }
+  }
+
+  /** Liste à jour ; les fichiers des plans supprimés ou plus visibles sont effacés du téléphone. */
+  async function refreshAllPlans(): Promise<void> {
+    await loadAllPlans()
+    plansSyncing.value = true
+    try {
+      const list = await api.plans.all()
+      allPlans.value = list
+      await kv.set(ALL_KEY, plain(list))
+      // Chaque chantier garde aussi sa liste (page du plan hors ligne)
+      const byProject = new Map<number, Plan[]>()
+      for (const p of list) byProject.set(p.project_id, [...(byProject.get(p.project_id) ?? []), p])
+      for (const [projectId, items] of byProject) {
+        plans.value = { ...plans.value, [projectId]: items }
+        await kv.set(`sites.plans.${projectId}`, plain(items))
+      }
+      const stale = staleFileIds(files.value, list)
+      if (stale.length) {
+        for (const id of stale) await kv.delete(`sites.planfile.${id}`)
+        files.value = Object.fromEntries(Object.entries(files.value).filter(([id]) => !stale.includes(Number(id))))
+        await kv.set(FILES_KEY, { ...files.value })
+      }
+    } finally {
+      plansSyncing.value = false
+    }
+  }
+
+  async function rememberFile(plan: Plan): Promise<void> {
+    files.value = { ...files.value, [plan.id]: plan.updated_at }
+    await kv.set(FILES_KEY, { ...files.value })
+  }
+
+  /** Garde des plans pour le hors ligne : fichiers et chantiers (équipements des repères). */
+  async function keepOffline(list: Plan[], progress: (done: number) => void = () => undefined): Promise<number> {
+    let done = 0
+    let failed = 0
+    for (const projectId of new Set(list.map((p) => p.project_id))) await refresh(projectId)
+    for (const plan of list) {
+      try {
+        await planFile(plan)
+      } catch {
+        failed++
+      }
+      progress(++done)
+    }
+    return failed
+  }
+
   /** Fichier du plan : téléchargé une fois, puis lu depuis le téléphone (même hors ligne). */
   async function planFile(plan: Plan): Promise<Blob> {
     const cacheKey = `sites.planfile.${plan.id}`
@@ -167,6 +232,7 @@ export const useSitesStore = defineStore('sites', () => {
     try {
       const blob = await api.plans.file(plan)
       await kv.set(cacheKey, { updated_at: plan.updated_at, blob })
+      await rememberFile(plan)
       return blob
     } catch (e) {
       if (cached) return cached.blob
@@ -175,6 +241,9 @@ export const useSitesStore = defineStore('sites', () => {
   }
 
   function reset(): void {
+    allPlans.value = []
+    files.value = {}
+    plansLoaded.value = false
     plans.value = {}
     sites.value = {}
     errors.value = {}
@@ -182,5 +251,5 @@ export const useSitesStore = defineStore('sites', () => {
 
   onWipe(reset)
 
-  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, saveEquipment, deleteEquipment, splitEquipment, fromQuote, reset }
+  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, saveEquipment, deleteEquipment, splitEquipment, fromQuote, allPlans, files, plansSyncing, loadAllPlans, refreshAllPlans, keepOffline, reset }
 })

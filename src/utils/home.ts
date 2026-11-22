@@ -1,5 +1,5 @@
 import type { Article, Client, Contact, Project, Quote, Task } from '@dash4/shared'
-import { add, barcodeOutline, bookOutline, businessOutline, keyOutline, personAddOutline, walletOutline } from 'ionicons/icons'
+import { add, barcodeOutline, bookOutline, businessOutline, keyOutline, mapOutline, personAddOutline, walletOutline } from 'ionicons/icons'
 
 /** Accueil : recherche dans les données du téléphone (marche hors ligne) et actions rapides de terrain. */
 
@@ -90,6 +90,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   { key: 'client', label: 'Nouveau client', icon: personAddOutline, route: { name: 'client-new' }, accountTypes: ['manager'], permissions: ['clients.create'] },
   { key: 'access', label: "Demander un accès", icon: keyOutline, route: { name: 'access-request-new' }, accountTypes: ['technician'], permissions: ['tech_access_requests.create'] },
   { key: 'clients', label: 'Clients', icon: businessOutline, route: { name: 'clients' }, accountTypes: ['manager'], permissions: ['clients.view', 'clients.view.own'] },
+  { key: 'plans', label: 'Plans', icon: mapOutline, route: { name: 'plans' }, accountTypes: ['manager', 'technician'], permissions: ['sites.view', 'sites.view.own'] },
 ]
 
 /** Actions rapides du compte (au plus `max`, dans l'ordre d'importance). */

@@ -209,6 +209,12 @@ export const router = createRouter({
           meta: { permissions: ['tech_access_requests.create'] },
         },
         {
+          path: 'plans',
+          name: 'plans',
+          component: () => import('@/views/sites/PlansPage.vue'),
+          meta: { permissions: ['sites.view', 'sites.view.own'] },
+        },
+        {
           path: 'chantier/:projectId(\\d+)',
           name: 'site',
           component: () => import('@/views/sites/SitePage.vue'),
