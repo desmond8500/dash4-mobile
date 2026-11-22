@@ -209,6 +209,20 @@ export const router = createRouter({
           meta: { permissions: ['sites.view', 'sites.view.own'] },
         },
         {
+          path: 'chantier/:projectId(\\d+)/equipements/nouveau',
+          name: 'equipment-new',
+          component: () => import('@/views/sites/EquipmentFormPage.vue'),
+          props: true,
+          meta: { permissions: ['sites.update', 'sites.update.own'] },
+        },
+        {
+          path: 'chantier/:projectId(\\d+)/equipements/:equipmentId(\\d+)',
+          name: 'equipment-edit',
+          component: () => import('@/views/sites/EquipmentFormPage.vue'),
+          props: true,
+          meta: { permissions: ['sites.update', 'sites.update.own'] },
+        },
+        {
           path: 'chantier/:projectId(\\d+)/plans/:planId(\\d+)',
           name: 'site-plan',
           component: () => import('@/views/sites/PlanPage.vue'),

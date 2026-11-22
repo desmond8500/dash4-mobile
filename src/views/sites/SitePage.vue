@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   IonAccordion,
   IonAccordionGroup,
@@ -82,6 +83,11 @@ async function progress(s: InstalledSystem): Promise<void> {
   await alert.present()
 }
 
+const router = useRouter()
+function edit(e: Equipment): void {
+  void router.push({ name: 'equipment-edit', params: { projectId: id.value, equipmentId: e.id } })
+}
+
 async function changeStatus(e: Equipment): Promise<void> {
   const sheet = await actionSheetController.create({
     header: e.name,
@@ -139,21 +145,30 @@ async function changeStatus(e: Equipment): Promise<void> {
               <IonBadge slot="end" color="medium">{{ s.progress }} %</IonBadge>
             </IonItem>
             <div slot="content">
-              <div v-if="site.can.manage" class="ion-padding-horizontal ion-padding-top">
+              <div v-if="site.can.manage" class="ion-padding-horizontal ion-padding-top tools">
                 <IonButton size="small" fill="outline" @click="progress(s)">Relever l'avancement</IonButton>
+                <IonButton size="small" fill="outline" :router-link="{ name: 'equipment-new', params: { projectId: id }, query: { system: s.id } }">Ajouter un équipement</IonButton>
               </div>
               <IonList>
                 <template v-for="node in visibleEquipment(s)" :key="node.item.id">
-                  <IonItem v-for="e in [node.item, ...node.children]" :key="e.id" :class="{ child: e.parent_id }">
+                  <IonItem
+                    v-for="e in [node.item, ...node.children]"
+                    :key="e.id"
+                    :class="{ child: e.parent_id }"
+                    :button="site.can.manage && e.id > 0"
+                    :detail="false"
+                    @click="site.can.manage && e.id > 0 && edit(e)"
+                  >
                     <IonLabel class="ion-text-wrap">
                       <h3>{{ e.quantity > 1 ? `${e.quantity} × ` : '' }}{{ e.name }}</h3>
                       <p>{{ [e.type, e.model, e.serial_number ? `N° ${e.serial_number}` : null].filter(Boolean).join(' · ') }}</p>
+                      <p v-if="e.id < 0"><IonText color="medium">En attente d'envoi</IonText></p>
                       <p v-if="placeLabel(site, e.level_id, e.room_id)">{{ placeLabel(site, e.level_id, e.room_id) }}</p>
-                      <p v-for="c in e.characteristics" :key="c.label" class="char" @click="copy(c.value)">
+                      <p v-for="c in e.characteristics" :key="c.label" class="char" @click.stop="copy(c.value)">
                         <span>{{ c.label }} :</span> <strong>{{ c.value }}</strong>
                       </p>
                     </IonLabel>
-                    <IonBadge slot="end" :color="statusColor(e.status.value)" @click="site.can.manage && changeStatus(e)">{{ e.status.label }}</IonBadge>
+                    <IonBadge slot="end" :color="statusColor(e.status.value)" @click.stop="site.can.manage && e.id > 0 && changeStatus(e)">{{ e.status.label }}</IonBadge>
                   </IonItem>
                 </template>
                 <IonItem v-if="search && !visibleEquipment(s).length" lines="none"><IonNote>Aucun équipement ne correspond.</IonNote></IonItem>
@@ -171,6 +186,12 @@ async function changeStatus(e: Equipment): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .bar {

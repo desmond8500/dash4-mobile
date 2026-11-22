@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ApiError, EQUIPMENT_STATUSES, type EquipmentStatus, type Plan, type Site } from '@dash4/shared'
+import { ApiError, EQUIPMENT_STATUSES, type EquipmentPayload, type EquipmentStatus, type Plan, type Site } from '@dash4/shared'
 import { api } from '@/services/api'
 import { kv, onWipe } from '@/offline/db'
 import { plain } from '@/offline/collection'
 import { useAuthStore } from './auth'
 import { useSyncStore } from './sync'
 import { canUseCachedPlan } from '@/utils/sites'
+import { applyEquipment, removeEquipment } from '@/utils/equipment'
 
 const key = (projectId: number) => `sites.${projectId}`
 
@@ -78,11 +79,52 @@ export const useSitesStore = defineStore('sites', () => {
   async function setEquipmentStatus(projectId: number, equipmentId: number, status: EquipmentStatus): Promise<void> {
     const site = sites.value[projectId]
     const equipment = site?.systems.flatMap((s) => s.equipment ?? []).find((e) => e.id === equipmentId)
-    if (!site || !equipment) return
+    if (!site || !equipment || equipment.id < 0) return
     const label = EQUIPMENT_STATUSES.find((s) => s.value === status)?.label ?? status
     equipment.status = { value: status, label }
     await save(projectId, site)
     await sync.enqueue({ type: 'equipment', label: `${equipment.name} : ${label.toLowerCase()}`, method: 'PATCH', path: `equipment/${equipmentId}`, payload: { status } })
+  }
+
+  // Chantiers modifiés sur le téléphone : rechargés après l'envoi (vrais numéros des équipements créés)
+  const touched = new Set<number>()
+  sync.onFlushed(() => {
+    for (const projectId of [...touched]) {
+      touched.delete(projectId)
+      void refresh(projectId)
+    }
+  })
+
+  /**
+   * Crée ou modifie un équipement : affiché tout de suite, envoyé dès que possible.
+   * Un équipement créé hors ligne garde un numéro provisoire (négatif) jusqu'à l'envoi.
+   */
+  async function saveEquipment(
+    projectId: number,
+    payload: EquipmentPayload & { installed_system_id: number },
+    equipmentId: number | null,
+    article: { id: number; designation: string; reference: string | null } | null = null,
+  ): Promise<void> {
+    const site = sites.value[projectId]
+    if (!site) return
+    const existing = equipmentId ? (site.systems.flatMap((s) => s.equipment ?? []).find((e) => e.id === equipmentId) ?? null) : null
+    const name = payload.name ?? article?.designation ?? existing?.name ?? 'Équipement'
+    if (existing) {
+      await sync.enqueue({ type: 'equipment', label: `Équipement modifié : ${name}`, method: 'PATCH', path: `equipment/${existing.id}`, payload: { ...payload } })
+    } else {
+      await sync.enqueue({ type: 'equipment', label: `Équipement ajouté : ${name}`, method: 'POST', path: `installed-systems/${payload.installed_system_id}/equipment`, payload: { ...payload } })
+    }
+    touched.add(projectId)
+    await save(projectId, applyEquipment(site, payload, existing, -Date.now(), article))
+  }
+
+  async function deleteEquipment(projectId: number, equipmentId: number): Promise<void> {
+    const site = sites.value[projectId]
+    const equipment = site?.systems.flatMap((s) => s.equipment ?? []).find((e) => e.id === equipmentId)
+    if (!site || !equipment || equipment.id < 0) return
+    await sync.enqueue({ type: 'equipment', label: `Équipement supprimé : ${equipment.name}`, method: 'DELETE', path: `equipment/${equipmentId}`, payload: {} })
+    touched.add(projectId)
+    await save(projectId, removeEquipment(site, equipmentId))
   }
 
   /** Plans du chantier (liste et repères), gardés avec le chantier. */
@@ -123,5 +165,5 @@ export const useSitesStore = defineStore('sites', () => {
 
   onWipe(reset)
 
-  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, reset }
+  return { sites, errors, plans, allowed, load, refresh, loadPlans, planFile, addProgress, setEquipmentStatus, saveEquipment, deleteEquipment, reset }
 })
