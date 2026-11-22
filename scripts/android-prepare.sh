@@ -5,18 +5,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RES=android/app/src/main/res
-IM=$(command -v magick || command -v convert)
+# ImageMagick 7 (magick) ou 6 (convert, identify)
+if command -v magick >/dev/null; then CONVERT="magick"; IDENTIFY="magick identify"; else CONVERT="convert"; IDENTIFY="identify"; fi
 
 # Icônes : chaque icône du modèle remplacée par celle de Dash4, à la même taille
 rm -rf "$RES/mipmap-anydpi-v26"
 find "$RES" -path '*mipmap-*' -name 'ic_launcher*.png' | while read -r f; do
-  size=$("$IM" identify -format '%wx%h' "$f")
-  "$IM" resources/icon.png -resize "${size}!" "$f"
+  size=$($IDENTIFY -format '%wx%h' "$f")
+  $CONVERT resources/icon.png -resize "${size}!" "$f"
 done
 # Écran de démarrage
 find "$RES" -path '*drawable*' -name 'splash.png' | while read -r f; do
-  size=$("$IM" identify -format '%wx%h' "$f")
-  "$IM" resources/splash.png -resize "${size}^" -gravity center -extent "$size" "$f"
+  size=$($IDENTIFY -format '%wx%h' "$f")
+  $CONVERT resources/splash.png -resize "${size}^" -gravity center -extent "$size" "$f"
 done
 
 # Permissions
