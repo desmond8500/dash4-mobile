@@ -76,7 +76,7 @@ const notFound = ref(false)
 const myTasks = computed(() => tasks.mine.filter((t) => OPEN_TASK_STATUSES.includes(t.status.value) || t.id === form.value.taskId))
 const projectOptions = computed(() =>
   journalProjectOptions([
-    projects.allowed() ? projects.items.filter((p) => !p.deleted_at).map((p) => ({ id: p.id, name: p.name })) : [],
+    projects.items.filter((p) => !p.deleted_at).map((p) => ({ id: p.id, name: p.name })),
     tasks.all.map((t) => t.project),
     store.items.map((j) => j.project),
   ]),
