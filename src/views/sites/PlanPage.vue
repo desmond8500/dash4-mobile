@@ -19,13 +19,15 @@ import {
   IonToolbar,
 } from '@ionic/vue'
 import { add, chevronBack, chevronForward, remove } from 'ionicons/icons'
-import { placeLabel } from '@dash4/shared'
+import { markerColor, planSymbol, placeLabel, visibleMarkers } from '@dash4/shared'
 import type { PlanMarker } from '@dash4/shared'
 import { useSitesStore } from '@/stores/sites'
+import { usePlanIconsStore } from '@/stores/planIcons'
 
 /** Plan d'un chantier avec ses repères : toucher un repère montre l'équipement. Lisible hors ligne une fois ouvert. */
 const props = defineProps<{ projectId: string; planId: string }>()
 const store = useSitesStore()
+const icons = usePlanIconsStore()
 const projectId = computed(() => Number(props.projectId))
 const plan = computed(() => (store.plans[projectId.value] ?? []).find((p) => p.id === Number(props.planId)) ?? null)
 const site = computed(() => store.sites[projectId.value] ?? null)
@@ -36,7 +38,10 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const selected = ref<PlanMarker | null>(null)
 
-const markers = computed(() => (plan.value?.markers ?? []).filter((m) => m.page === page.value))
+// Calques masqués dans l'éditeur : masqués ici aussi
+const markers = computed(() => visibleMarkers((plan.value?.markers ?? []).filter((m) => m.page === page.value), plan.value?.settings?.hidden_layers ?? []))
+const iconOf = (m: PlanMarker) => icons.byId(m.icon_id)
+const showLabel = (m: PlanMarker) => plan.value?.settings?.labels !== false && m.show_label !== false
 const equipment = (id: number | null) => site.value?.systems.flatMap((s) => (s.equipment ?? []).map((e) => ({ ...e, system: s.name }))).find((e) => e.id === id)
 
 async function render(pageNumber: number): Promise<void> {
@@ -62,7 +67,7 @@ async function render(pageNumber: number): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.all([store.load(projectId.value), store.loadPlans(projectId.value)])
+  await Promise.all([store.load(projectId.value), store.loadPlans(projectId.value), icons.load().catch(() => undefined)])
   await render(1)
 })
 onBeforeUnmount(() => image.value && URL.revokeObjectURL(image.value.url))
@@ -96,10 +101,14 @@ onBeforeUnmount(() => image.value && URL.revokeObjectURL(image.value.url))
             :key="m.id"
             type="button"
             class="marker"
-            :style="{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, background: m.color ?? '#e11d48' }"
+            :style="{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `max(22px, ${(m.size ?? 0.03) * 100}%)` }"
             @click="selected = m"
           >
-            <span>{{ m.label ?? equipment(m.equipment_id)?.name ?? '' }}</span>
+            <img v-if="iconOf(m)?.file_path && icons.images[iconOf(m)!.id]" :src="icons.images[iconOf(m)!.id]" alt="" class="glyph" :style="{ transform: `rotate(${m.rotation ?? 0}deg)` }" />
+            <svg v-else class="glyph" viewBox="-1 -1 26 26" aria-hidden="true" :style="{ transform: `rotate(${m.rotation ?? 0}deg)` }">
+              <path :d="planSymbol(iconOf(m)?.symbol).path" fill-rule="evenodd" :fill="markerColor(m, iconOf(m))" stroke="#fff" stroke-width="1.4" paint-order="stroke" />
+            </svg>
+            <span v-if="showLabel(m)">{{ m.label ?? equipment(m.equipment_id)?.name ?? '' }}</span>
           </button>
         </div>
       </div>
@@ -150,18 +159,25 @@ onBeforeUnmount(() => image.value && URL.revokeObjectURL(image.value.url))
 .marker {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+  aspect-ratio: 1;
+  border: none;
+  background: none;
   padding: 0;
+}
+
+.glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
 }
 
 .marker span {
   position: absolute;
-  left: 24px;
-  top: -1px;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
   white-space: nowrap;
   font-size: 0.7rem;
   font-weight: 600;
