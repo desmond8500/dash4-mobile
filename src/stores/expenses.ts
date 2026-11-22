@@ -6,6 +6,7 @@ import { kv, onWipe } from '@/offline/db'
 import { mergeChanges, pendingCreations, plain } from '@/offline/collection'
 import { useAuthStore } from './auth'
 import { useSyncStore } from './sync'
+import { decideLocally } from '@/utils/expenses'
 
 const ITEMS_KEY = 'expenses.items'
 const SYNCED_AT_KEY = 'expenses.syncedAt'
@@ -118,6 +119,24 @@ export const useExpensesStore = defineStore('expenses', () => {
     }
   }
 
+  /**
+   * Vérification par la comptabilité (accounting.update) : valider, refuser (avec un motif) ou rembourser.
+   * Envoyé maintenant ou au retour du réseau ; la liste change tout de suite.
+   */
+  async function decide(expense: Expense, action: 'approve' | 'reject' | 'reimburse', reason: string | null = null): Promise<void> {
+    const labels = { approve: 'Dépense validée', reject: 'Dépense refusée', reimburse: 'Dépense remboursée' } as const
+    await sync.enqueue({
+      type: `expense-${action}`,
+      label: `${labels[action]} : ${expense.label} — ${expense.amount.toLocaleString('fr-FR')} F CFA`,
+      method: 'POST',
+      path: `expenses/${expense.id}/${action}`,
+      payload: action === 'reject' ? { reason } : {},
+    })
+    items.value = items.value.map((e) => (e.id === expense.id ? decideLocally(e, action, reason) : e))
+    await kv.set(ITEMS_KEY, plain(items.value))
+  }
+  const canDecide = () => auth.can('accounting.update')
+
   const hasPendingReceipt = (uuid: string | null) => !!uuid && pendingReceipts.value.includes(uuid)
 
   function reset(): void {
@@ -132,5 +151,5 @@ export const useExpensesStore = defineStore('expenses', () => {
   sync.onFlushed(() => void refresh().catch(() => undefined))
   onWipe(reset)
 
-  return { items, sorted, mine, pending, toReimburse, categories, spaces, syncedAt, loaded, syncing, allowed, load, refresh, create, hasPendingReceipt, reset }
+  return { items, sorted, mine, pending, toReimburse, categories, spaces, syncedAt, loaded, syncing, allowed, load, refresh, create, decide, canDecide, hasPendingReceipt, reset }
 })

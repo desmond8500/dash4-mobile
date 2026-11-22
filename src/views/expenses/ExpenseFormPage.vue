@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SearchSelect from '@/components/SearchSelect.vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   IonBackButton,
   IonButton,
@@ -12,6 +12,8 @@ import {
   IonLabel,
   IonList,
   IonPage,
+  IonSegment,
+  IonSegmentButton,
   IonSelect,
   IonSelectOption,
   IonText,
@@ -27,6 +29,11 @@ import { PAYMENT_METHODS } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useExpensesStore } from '@/stores/expenses'
 import { useProjectsStore } from '@/stores/projects'
+import { useQuotesStore } from '@/stores/quotes'
+import { useTasksStore } from '@/stores/tasks'
+import { useJournalsStore } from '@/stores/journals'
+import { journalProjectOptions } from '@/utils/journals'
+import { useRoute } from 'vue-router'
 import { useSyncStore } from '@/stores/sync'
 import { buildExpensePayload, todayIso, type ExpenseForm } from '@/utils/expenses'
 
@@ -43,6 +50,7 @@ const form = reactive<ExpenseForm>({
   categoryId: null,
   spaceId: null,
   projectId: null,
+  quoteId: null,
   method: 'cash',
   advanced: false,
   description: '',
@@ -51,12 +59,41 @@ const photo = ref<File | null>(null)
 const preview = ref<string | null>(null)
 const error = ref<string | null>(null)
 const saving = ref(false)
-const canPickProject = auth.canAny(['projects.view', 'projects.view.own']) && !auth.isTechnician
+// Rattachement obligatoire : un projet, ou un devis (gestionnaires ; le projet du devis suit)
+const quotes = useQuotesStore()
+const tasks = useTasksStore()
+const journals = useJournalsStore()
+const route = useRoute()
+const canPickQuote = auth.canAny(['quotes.view', 'quotes.view.own']) && !auth.isTechnician
+const linkTo = ref<'project' | 'quote'>('project')
+/** Projets proposés : la liste des projets, sinon ceux des tâches et des rapports du compte (techniciens). */
+const projectOptions = computed(() =>
+  journalProjectOptions([
+    projects.items.filter((p) => !p.deleted_at).map((p) => ({ id: p.id, name: p.name })),
+    tasks.all.map((t) => t.project),
+    journals.items.map((j) => j.project),
+  ]),
+)
+const quoteOptions = computed(() =>
+  quotes.items
+    .filter((q) => ['sent', 'accepted', 'draft'].includes(q.status.value))
+    .map((q) => ({ value: q.id, label: `${q.number} — ${q.title}`, detail: [q.client?.name, q.project?.name, q.status.label].filter(Boolean).join(' · ') })),
+)
+function onLinkChange(value: 'project' | 'quote'): void {
+  linkTo.value = value
+  if (value === 'project') form.quoteId = null
+  else form.projectId = null
+}
+function onQuote(id: number | null): void {
+  const quote = quotes.items.find((q) => q.id === id)
+  form.projectId = quote?.project_id ?? null
+}
 
 onMounted(async () => {
-  await store.load()
-  if (canPickProject) await projects.load()
+  await Promise.all([store.load(), projects.load().catch(() => undefined), tasks.load().catch(() => undefined), journals.load().catch(() => undefined), canPickQuote ? quotes.load().catch(() => undefined) : undefined])
   if (store.spaces.length === 1) form.spaceId = store.spaces[0]!.id
+  const projectId = Number(route.query.project_id)
+  if (projectId) form.projectId = projectId
 })
 
 function onPhoto(event: Event): void {
@@ -113,6 +150,26 @@ async function save(): Promise<void> {
         </IonList>
 
         <IonList inset>
+          <IonItem v-if="canPickQuote && quoteOptions.length" lines="none">
+            <IonSegment :value="linkTo" @ion-change="onLinkChange($event.detail.value as 'project' | 'quote')">
+              <IonSegmentButton value="project"><IonLabel>Projet</IonLabel></IonSegmentButton>
+              <IonSegmentButton value="quote"><IonLabel>Devis</IonLabel></IonSegmentButton>
+            </IonSegment>
+          </IonItem>
+          <SearchSelect
+            v-if="linkTo === 'project'"
+            v-model="form.projectId"
+            label="Projet *"
+            placeholder="Choisir le projet de la dépense"
+            :options="projectOptions.map((p) => ({ value: p.id, label: p.name }))"
+          />
+          <SearchSelect v-else v-model="form.quoteId" label="Devis *" placeholder="Choisir le devis" :options="quoteOptions" @select="onQuote" />
+          <IonItem v-if="!projectOptions.length && !quoteOptions.length" lines="none">
+            <IonText color="medium"><p>Aucun projet sur le téléphone : ouvrez vos tâches ou vos projets avec le réseau.</p></IonText>
+          </IonItem>
+        </IonList>
+
+        <IonList inset>
           <IonItem v-if="store.categories.length">
             <IonSelect v-model="form.categoryId" label="Catégorie" label-placement="stacked" interface="action-sheet" cancel-text="Annuler">
               <IonSelectOption :value="null">Sans catégorie</IonSelectOption>
@@ -125,7 +182,6 @@ async function save(): Promise<void> {
               <IonSelectOption v-for="s in store.spaces" :key="s.id" :value="s.id">{{ s.name }}</IonSelectOption>
             </IonSelect>
           </IonItem>
-          <SearchSelect v-if="canPickProject && projects.active.length" v-model="form.projectId" label="Projet" null-label="Aucun" :options="projects.active.map((p) => ({ value: p.id, label: p.name, detail: p.client?.name }))" />
           <IonItem><IonTextarea v-model="form.description" label="Détails" label-placement="stacked" :auto-grow="true" /></IonItem>
         </IonList>
 
