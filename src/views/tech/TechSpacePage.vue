@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { matches } from '@/utils/home'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -24,6 +25,7 @@ import {
   IonToolbar,
   alertController,
   type RefresherCustomEvent,
+  IonSearchbar,
 } from '@ionic/vue'
 import { add, cloudOfflineOutline, ellipseOutline, keyOutline } from 'ionicons/icons'
 import type { TechAccessRequest } from '@dash4/shared'
@@ -108,12 +110,19 @@ async function reject(r: TechAccessRequest): Promise<void> {
   })
   await alert.present()
 }
+
+const query = ref('')
+const shownShares = computed(() => (query.value.trim() ? store.active.filter((s) => matches(query.value, s.title, s.category.label, s.task?.title, s.project?.name)) : store.active))
+const shownRequests = computed(() =>
+  query.value.trim() ? store.sortedRequests.filter((r) => matches(query.value, r.subject, r.reason, r.task?.title, r.project?.name, r.user?.full_name)) : store.sortedRequests,
+)
 </script>
 
 <template>
   <IonPage>
     <IonHeader>
       <IonToolbar><IonTitle>Accès et infos</IonTitle></IonToolbar>
+      <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Titre, tâche, projet…" aria-label="Rechercher" /></IonToolbar>
       <IonToolbar v-if="store.canShares() && store.canRequests()">
         <IonSegment v-model="segment">
           <IonSegmentButton value="infos"><IonLabel>Informations<IonBadge v-if="store.unread" color="primary" class="count">{{ store.unread }}</IonBadge></IonLabel></IonSegmentButton>
@@ -129,7 +138,7 @@ async function reject(r: TechAccessRequest): Promise<void> {
 
       <template v-if="segment === 'infos'">
         <IonList inset>
-          <IonItem v-for="s in store.active" :key="s.id" :router-link="{ name: 'tech-share', params: { id: s.id } }" detail>
+          <IonItem v-for="s in shownShares" :key="s.id" :router-link="{ name: 'tech-share', params: { id: s.id } }" detail>
             <IonIcon slot="start" :icon="s.is_recipient && !s.read_at ? ellipseOutline : keyOutline" :color="s.is_recipient && !s.read_at ? 'primary' : 'medium'" />
             <IonLabel class="ion-text-wrap">
               <h3>{{ s.title }}</h3>
@@ -152,7 +161,7 @@ async function reject(r: TechAccessRequest): Promise<void> {
           </IonItem>
         </IonList>
         <IonList inset>
-          <IonItem v-for="r in store.sortedRequests" :key="r.id">
+          <IonItem v-for="r in shownRequests" :key="r.id">
             <IonLabel class="ion-text-wrap">
               <h3>{{ r.subject }}</h3>
               <p v-if="!isTechnician">{{ r.user?.full_name }}</p>

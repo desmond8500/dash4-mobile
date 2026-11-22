@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SearchSelect from '@/components/SearchSelect.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
@@ -16,8 +17,6 @@ import {
   IonPage,
   IonSegment,
   IonSegmentButton,
-  IonSelect,
-  IonSelectOption,
   IonSpinner,
   IonText,
   IonTitle,
@@ -144,12 +143,7 @@ async function save(): Promise<void> {
           <IonItem>
             <IonInput v-model="reason" label="Motif" label-placement="stacked" :placeholder="type === 'out' ? 'Chantier, casse…' : ''" />
           </IonItem>
-          <IonItem v-if="projectOptions.length && type !== 'inventory'">
-            <IonSelect v-model="projectId" label="Projet" label-placement="stacked" interface="action-sheet" cancel-text="Annuler">
-              <IonSelectOption :value="null">Aucun</IonSelectOption>
-              <IonSelectOption v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+          <SearchSelect v-if="projectOptions.length && type !== 'inventory'" v-model="projectId" label="Projet" null-label="Aucun" :options="projectOptions.map((p) => ({ value: p.id, label: p.name }))" />
           <div class="ion-padding">
             <IonButton expand="block" :disabled="saving || quantity === null" @click="save">Enregistrer</IonButton>
           </div>

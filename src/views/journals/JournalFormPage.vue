@@ -36,6 +36,7 @@ import { useSyncStore } from '@/stores/sync'
 import { useTasksStore } from '@/stores/tasks'
 import { todayIso } from '@/utils/expenses'
 import { openPhotos } from '@/utils/lightbox'
+import SearchSelect from '@/components/SearchSelect.vue'
 import {
   addParticipant,
   buildJournalPayload,
@@ -93,13 +94,6 @@ const contactOptions = computed(() =>
   clientId.value ? clients.contacts.filter((c) => c.client_id === clientId.value && !form.value.participants.some((p) => p.contact_id === c.id)) : [],
 )
 const freeName = ref('')
-/** Liste déroulante remise à vide après un choix. */
-function picked(event: CustomEvent): number | null {
-  const el = event.target as HTMLIonSelectElement
-  const value = el.value as number | null
-  el.value = null
-  return value
-}
 function addTeam(id: number | null): void {
   const u = store.team.find((x) => x.id === id)
   if (u) form.value.participants = addParticipant(form.value.participants, { user_id: u.id, contact_id: null, name: u.full_name, role: u.job_title ?? '', kind: 'team' })
@@ -271,11 +265,7 @@ async function save(): Promise<void> {
               <IonSelectOption v-for="t in myTasks" :key="t.id" :value="t.id">{{ t.title }}</IonSelectOption>
             </IonSelect>
           </IonItem>
-          <IonItem>
-            <IonSelect v-model="form.projectId" label="Projet *" label-placement="stacked" interface="alert" cancel-text="Annuler" placeholder="Choisir le projet">
-              <IonSelectOption v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+          <SearchSelect v-model="form.projectId" label="Projet *" placeholder="Choisir le projet" :options="projectOptions.map((p) => ({ value: p.id, label: p.name }))" />
           <IonItem v-if="!projectOptions.length" lines="none">
             <IonNote>Aucun projet sur le téléphone : ouvrez vos tâches ou vos projets avec le réseau.</IonNote>
           </IonItem>
@@ -298,16 +288,22 @@ async function save(): Promise<void> {
             <IonInput v-model="p.role" slot="end" class="role" placeholder="Rôle" aria-label="Rôle" />
             <IonButton slot="end" fill="clear" color="danger" aria-label="Retirer" @click="removeParticipant(p)"><IonIcon slot="icon-only" :icon="closeCircle" /></IonButton>
           </IonItem>
-          <IonItem v-if="teamOptions.length">
-            <IonSelect :value="null" label="Ajouter un membre de l'équipe" label-placement="stacked" interface="alert" cancel-text="Annuler" placeholder="Choisir…" @ion-change="addTeam(picked($event))">
-              <IonSelectOption v-for="u in teamOptions" :key="u.id" :value="u.id">{{ u.full_name }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
-          <IonItem v-if="contactOptions.length">
-            <IonSelect :value="null" label="Ajouter un contact du client" label-placement="stacked" interface="alert" cancel-text="Annuler" placeholder="Choisir…" @ion-change="addContact(picked($event))">
-              <IonSelectOption v-for="c in contactOptions" :key="c.id" :value="c.id">{{ c.full_name }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+          <SearchSelect
+            v-if="teamOptions.length"
+            action
+            label="Ajouter un membre de l'équipe"
+            placeholder="Choisir…"
+            :options="teamOptions.map((u) => ({ value: u.id, label: u.full_name, detail: u.job_title }))"
+            @select="addTeam"
+          />
+          <SearchSelect
+            v-if="contactOptions.length"
+            action
+            label="Ajouter un contact du client"
+            placeholder="Choisir…"
+            :options="contactOptions.map((c) => ({ value: c.id, label: c.full_name, detail: c.job_title }))"
+            @select="addContact"
+          />
           <IonItem>
             <IonInput v-model="freeName" label="Autre intervenant (nom)" label-placement="stacked" placeholder="Sous-traitant, gardien…" @keyup.enter="addFree" />
             <IonButton slot="end" fill="clear" :disabled="!freeName.trim()" aria-label="Ajouter l'intervenant" @click="addFree"><IonIcon slot="icon-only" :icon="add" /></IonButton>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { matches } from '@/utils/home'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
@@ -21,6 +22,7 @@ import {
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
+  IonSearchbar,
 } from '@ionic/vue'
 import { add, attachOutline, cloudOfflineOutline } from 'ionicons/icons'
 import { formatMoney } from '@dash4/shared'
@@ -30,7 +32,11 @@ import { expenseColor } from '@/utils/expenses'
 /** Mes dépenses (et celles de mes caisses) ; saisie hors ligne. */
 const store = useExpensesStore()
 const segment = ref<'mine' | 'all'>('mine')
-const list = computed(() => (segment.value === 'mine' ? store.mine : store.sorted))
+const query = ref('')
+const list = computed(() => {
+  const items = segment.value === 'mine' ? store.mine : store.sorted
+  return query.value.trim() ? items.filter((e) => matches(query.value, e.label, e.description, e.category?.name, e.project?.name, e.space?.name, e.creator?.full_name, e.amount)) : items
+})
 
 onMounted(async () => {
   await store.load()
@@ -49,6 +55,7 @@ const date = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocale
   <IonPage>
     <IonHeader>
       <IonToolbar><IonTitle>Dépenses</IonTitle></IonToolbar>
+      <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Libellé, catégorie, projet, montant…" aria-label="Rechercher" /></IonToolbar>
       <IonToolbar v-if="store.spaces.length">
         <IonSegment v-model="segment">
           <IonSegmentButton value="mine"><IonLabel>Les miennes</IonLabel></IonSegmentButton>

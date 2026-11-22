@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SearchSelect from '@/components/SearchSelect.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -11,8 +12,6 @@ import {
   IonItem,
   IonList,
   IonPage,
-  IonSelect,
-  IonSelectOption,
   IonText,
   IonTextarea,
   IonTitle,
@@ -83,12 +82,7 @@ async function save(): Promise<void> {
         <IonList inset>
           <IonItem><IonInput v-model="form.subject" label="Besoin" label-placement="stacked" placeholder="Code du portail, clé du local technique…" autocapitalize="sentences" /></IonItem>
           <IonItem><IonTextarea v-model="form.reason" label="Pourquoi" label-placement="stacked" :auto-grow="true" autocapitalize="sentences" /></IonItem>
-          <IonItem v-if="myTasks.length">
-            <IonSelect v-model="form.taskId" label="Tâche" label-placement="stacked" interface="action-sheet" cancel-text="Annuler">
-              <IonSelectOption :value="null">Sans tâche</IonSelectOption>
-              <IonSelectOption v-for="t in myTasks" :key="t.id" :value="t.id">{{ t.title }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+          <SearchSelect v-if="myTasks.length" v-model="form.taskId" label="Tâche" null-label="Sans tâche" :options="myTasks.map((t) => ({ value: t.id, label: t.title, detail: t.project?.name }))" />
           <IonItem><IonInput v-model="form.neededOn" type="date" label="Pour le" label-placement="stacked" :min="todayIso()" /></IonItem>
         </IonList>
         <div v-if="error" class="ion-padding-horizontal"><IonText color="danger"><p>{{ error }}</p></IonText></div>

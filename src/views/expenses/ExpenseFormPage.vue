@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SearchSelect from '@/components/SearchSelect.vue'
 import { onMounted, reactive, ref } from 'vue'
 import {
   IonBackButton,
@@ -124,12 +125,7 @@ async function save(): Promise<void> {
               <IonSelectOption v-for="s in store.spaces" :key="s.id" :value="s.id">{{ s.name }}</IonSelectOption>
             </IonSelect>
           </IonItem>
-          <IonItem v-if="canPickProject && projects.active.length">
-            <IonSelect v-model="form.projectId" label="Projet" label-placement="stacked" interface="action-sheet" cancel-text="Annuler">
-              <IonSelectOption :value="null">Aucun</IonSelectOption>
-              <IonSelectOption v-for="p in projects.active" :key="p.id" :value="p.id">{{ p.name }}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+          <SearchSelect v-if="canPickProject && projects.active.length" v-model="form.projectId" label="Projet" null-label="Aucun" :options="projects.active.map((p) => ({ value: p.id, label: p.name, detail: p.client?.name }))" />
           <IonItem><IonTextarea v-model="form.description" label="Détails" label-placement="stacked" :auto-grow="true" /></IonItem>
         </IonList>
 

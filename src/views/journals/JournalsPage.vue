@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { matches } from '@/utils/home'
+import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
   IonContent,
@@ -19,6 +20,7 @@ import {
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
+  IonSearchbar,
 } from '@ionic/vue'
 import { add, cloudOfflineOutline, imagesOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
@@ -37,12 +39,20 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
   await event.target.complete()
 }
 const date = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '')
+
+const query = ref('')
+const shown = computed(() =>
+  query.value.trim()
+    ? store.sorted.filter((j) => matches(query.value, j.title, j.type.label, j.project?.name, j.client?.name, j.task?.title, ...(j.participants ?? []).map((p) => p.name)))
+    : store.sorted,
+)
 </script>
 
 <template>
   <IonPage>
     <IonHeader>
       <IonToolbar><IonTitle>Rapports</IonTitle></IonToolbar>
+      <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Titre, projet, client, intervenant…" aria-label="Rechercher" /></IonToolbar>
     </IonHeader>
     <IonContent>
       <IonRefresher slot="fixed" @ion-refresh="onRefresh">
@@ -62,7 +72,7 @@ const date = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00`).toLocale
       </IonList>
 
       <IonList inset>
-        <IonItem v-for="j in store.sorted" :key="j.id" :router-link="{ name: 'journal', params: { id: j.id } }" detail>
+        <IonItem v-for="j in shown" :key="j.id" :router-link="{ name: 'journal', params: { id: j.id } }" detail>
           <IonLabel class="ion-text-wrap">
             <h3>{{ j.title }}</h3>
             <p>{{ [date(j.date), j.project?.name ?? j.client?.name].filter(Boolean).join(' · ') }}</p>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { matches } from '@/utils/home'
+import { computed, onMounted, ref } from 'vue'
 import {
   IonBackButton,
   IonButtons,
@@ -16,6 +17,7 @@ import {
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
+  IonSearchbar,
 } from '@ionic/vue'
 import { alertText, formatKm, vehicleSubtitle } from '@dash4/shared'
 import { useFleetStore } from '@/stores/fleet'
@@ -29,6 +31,11 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
   await store.refresh().catch(() => undefined)
   await event.target.complete()
 }
+
+const query = ref('')
+const shown = computed(() =>
+  query.value.trim() ? store.visible.filter((v) => matches(query.value, v.name, v.plate, v.brand, v.model, v.driver?.full_name)) : store.visible,
+)
 </script>
 
 <template>
@@ -38,11 +45,12 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         <IonButtons slot="start"><IonBackButton default-href="/accueil" text="Retour" /></IonButtons>
         <IonTitle>Véhicules</IonTitle>
       </IonToolbar>
+      <IonToolbar v-if="store.visible.length > 3"><IonSearchbar v-model="query" :debounce="150" placeholder="Nom, immatriculation, conducteur…" aria-label="Rechercher" /></IonToolbar>
     </IonHeader>
     <IonContent>
       <IonRefresher slot="fixed" @ion-refresh="onRefresh"><IonRefresherContent /></IonRefresher>
       <IonList>
-        <IonItem v-for="v in store.visible" :key="v.id" button :router-link="{ name: 'vehicle', params: { id: v.id } }">
+        <IonItem v-for="v in shown" :key="v.id" button :router-link="{ name: 'vehicle', params: { id: v.id } }">
           <IonLabel class="ion-text-wrap">
             <h2>{{ v.name }}</h2>
             <p>{{ vehicleSubtitle(v) || v.kind.label }} · {{ formatKm(v.mileage) }}</p>

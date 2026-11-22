@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { matches } from '@/utils/home'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
@@ -19,6 +20,7 @@ import {
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
+  IonSearchbar,
 } from '@ionic/vue'
 import { alertCircle } from 'ionicons/icons'
 import { OPEN_TASK_STATUSES, type Task } from '@dash4/shared'
@@ -32,7 +34,11 @@ const auth = useAuthStore()
 const segment = ref<'today' | 'week' | 'open' | 'done'>('today')
 const today = isoDay(new Date())
 // Un gestionnaire qui voit toutes les tâches regarde d'abord les siennes
-const base = computed(() => (auth.isTechnician || !auth.can('tasks.view') ? store.all : store.mine))
+const query = ref('')
+const all = computed(() => (auth.isTechnician || !auth.can('tasks.view') ? store.all : store.mine))
+const base = computed(() =>
+  query.value.trim() ? all.value.filter((t) => matches(query.value, t.title, t.project?.name, t.status.label, ...(t.assignees ?? []).map((a) => a.full_name))) : all.value,
+)
 
 const todayTasks = computed(() => sortForDay(base.value.filter((t) => isOnDay(t, today) || (t.is_overdue && OPEN_TASK_STATUSES.includes(t.status.value)))))
 const week = computed(() =>
@@ -60,6 +66,7 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
   <IonPage>
     <IonHeader>
       <IonToolbar><IonTitle>Tâches</IonTitle></IonToolbar>
+      <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Tâche, projet, personne…" aria-label="Rechercher" /></IonToolbar>
       <IonToolbar>
         <IonSegment v-model="segment" scrollable>
           <IonSegmentButton value="today"><IonLabel>Aujourd'hui</IonLabel></IonSegmentButton>
