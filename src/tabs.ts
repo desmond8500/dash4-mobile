@@ -1,4 +1,4 @@
-import { keyOutline, bookOutline, checkboxOutline, briefcaseOutline, businessOutline, chatbubblesOutline, cubeOutline, homeOutline, walletOutline, personCircleOutline, chatbubbleEllipsesOutline } from 'ionicons/icons'
+import { keyOutline, bookOutline, checkboxOutline, briefcaseOutline, businessOutline, carOutline, chatbubblesOutline, cubeOutline, documentTextOutline, homeOutline, walletOutline, personCircleOutline, chatbubbleEllipsesOutline } from 'ionicons/icons'
 
 /**
  * Onglets du bas de l'écran, selon le type de compte et les permissions.
@@ -69,6 +69,20 @@ export const TABS: TabEntry[] = [
     permissions: ['stock.view'],
   },
   {
+    name: 'invoices',
+    label: 'Factures',
+    icon: documentTextOutline,
+    accountTypes: ['manager'],
+    permissions: ['invoices.view'],
+  },
+  {
+    name: 'vehicles',
+    label: 'Véhicules',
+    icon: carOutline,
+    accountTypes: ['manager', 'technician'],
+    permissions: ['vehicles.view', 'vehicles.view.own'],
+  },
+  {
     name: 'expenses',
     label: 'Dépenses',
     icon: walletOutline,
@@ -86,4 +100,40 @@ export function visibleTabs(
   return TABS.filter(
     (tab) => tab.accountTypes.includes(accountType) && (tab.permissions.length === 0 || canAny(tab.permissions)),
   )
+}
+
+/** Nombre d'entrées dans la barre du bas, le bouton « Plus » compris. */
+export const TAB_BAR_SIZE = 5
+
+/**
+ * Entrées les plus utiles en bas de l'écran, par type de compte (dans cet ordre, si le compte les voit).
+ * Le reste va dans le menu « Plus ».
+ */
+export const PRIMARY: Record<'manager' | 'technician', string[]> = {
+  manager: ['home', 'projects', 'tasks', 'messages', 'client-requests', 'clients'],
+  technician: ['home', 'tasks', 'journals', 'messages', 'tech-space'],
+}
+
+/**
+ * Barre du bas (au plus 4 entrées + « Plus ») et menu « Plus » (le reste, dans l'ordre des onglets).
+ * Avec 5 entrées ou moins en tout, pas de menu : tout tient dans la barre.
+ */
+export function splitTabs(
+  accountType: 'manager' | 'technician',
+  canAny: (permissions: string[]) => boolean,
+): { bar: TabEntry[]; more: TabEntry[] } {
+  const all = visibleTabs(accountType, canAny)
+  if (all.length <= TAB_BAR_SIZE) return { bar: all, more: [] }
+  const order = PRIMARY[accountType]
+  const bar = order
+    .map((name) => all.find((t) => t.name === name))
+    .filter((t): t is TabEntry => !!t)
+    .slice(0, TAB_BAR_SIZE - 1)
+  // Moins de 4 entrées prioritaires visibles : on complète avec les premières du reste
+  for (const tab of all) {
+    if (bar.length >= TAB_BAR_SIZE - 1) break
+    if (!bar.includes(tab)) bar.push(tab)
+  }
+  const ordered = all.filter((t) => bar.includes(t))
+  return { bar: ordered, more: all.filter((t) => !bar.includes(t)) }
 }
