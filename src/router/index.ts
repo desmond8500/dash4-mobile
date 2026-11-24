@@ -100,6 +100,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager'], permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'outillage',
+          name: 'tools',
+          component: () => import('@/views/tools/ToolsPage.vue'),
+          meta: { accountTypes: ['manager', 'technician'], permissions: ['tools.view', 'tools.view.own'] },
+        },
+        {
+          path: 'outillage/:id(\\d+)',
+          name: 'tool',
+          component: () => import('@/views/tools/ToolPage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager', 'technician'], permissions: ['tools.view', 'tools.view.own'] },
+        },
+        {
           path: 'vehicules',
           name: 'vehicles',
           component: () => import('@/views/fleet/VehiclesPage.vue'),

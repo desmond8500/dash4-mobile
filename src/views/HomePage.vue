@@ -37,6 +37,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { useInvoicesStore } from '@/stores/invoices'
 import { useFleetStore } from '@/stores/fleet'
+import { useToolsStore } from '@/stores/tools'
 import { useTasksStore } from '@/stores/tasks'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -50,6 +51,7 @@ const auth = useAuthStore()
 const sync = useSyncStore()
 const invoices = useInvoicesStore()
 const fleet = useFleetStore()
+const tools = useToolsStore()
 const tasks = useTasksStore()
 const notifications = useNotificationsStore()
 const dashboard = useDashboardStore()
@@ -91,6 +93,12 @@ function runAction(a: QuickAction): void {
   else ionRouter.push(a.route)
 }
 async function onCode(code: string): Promise<void> {
+  // Étiquette QR d'un outil
+  const tool = tools.allowed() ? tools.byScan(code) : null
+  if (tool) {
+    ionRouter.push({ name: 'tool', params: { id: tool.id } })
+    return
+  }
   const article = stock.byCode(code)
   if (article) {
     ionRouter.push({ name: 'stock-article', params: { id: article.id } })
@@ -118,13 +126,14 @@ onMounted(() => {
   for (const store of [clients, projects, quotes, stock]) void store.load().then(() => store.refresh()).catch(() => undefined)
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
   void fleet.load().then(() => fleet.refresh()).catch(() => undefined)
+  void tools.load().then(() => tools.refresh()).catch(() => undefined)
   void tasks.load().then(() => tasks.refresh()).catch(() => undefined)
   void notifications.refresh()
   void dashboard.load().then(() => dashboard.refresh())
 })
 
 async function onRefresh(event: RefresherCustomEvent): Promise<void> {
-  await Promise.all([auth.refresh(), sync.flush(), clients.refresh().catch(() => undefined), projects.refresh().catch(() => undefined), quotes.refresh().catch(() => undefined), stock.refresh().catch(() => undefined), invoices.refresh().catch(() => undefined), fleet.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh(), dashboard.refresh()])
+  await Promise.all([auth.refresh(), sync.flush(), clients.refresh().catch(() => undefined), projects.refresh().catch(() => undefined), quotes.refresh().catch(() => undefined), stock.refresh().catch(() => undefined), invoices.refresh().catch(() => undefined), fleet.refresh().catch(() => undefined), tools.refresh().catch(() => undefined), tasks.refresh().catch(() => undefined), notifications.refresh(), dashboard.refresh()])
   await event.target.complete()
 }
 </script>
@@ -242,6 +251,18 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           <IonItem lines="none">
             <IonLabel>{{ fleet.visible.length === 1 ? fleet.visible[0]!.name : `${fleet.visible.length} véhicules` }}</IonLabel>
             <IonNote slot="end" :color="fleet.alertsCount ? 'warning' : undefined">{{ fleet.alertsCount ? `${fleet.alertsCount} à surveiller` : 'Rien à signaler' }}</IonNote>
+          </IonItem>
+        </IonCardContent>
+      </IonCard>
+
+      <IonCard v-if="tools.allowed() && (auth.can('tools.view') ? tools.visible.length : tools.mine.length)" button :router-link="{ name: 'tools' }">
+        <IonCardHeader>
+          <IonCardTitle>Outillage</IonCardTitle>
+        </IonCardHeader>
+        <IonCardContent>
+          <IonItem lines="none">
+            <IonLabel>{{ auth.can('tools.view') ? `${tools.visible.filter((t) => t.current_loan).length} outil(s) prêté(s)` : `${tools.mine.length} outil(s) chez moi` }}</IonLabel>
+            <IonNote slot="end" :color="tools.lateCount ? 'danger' : undefined">{{ tools.lateCount ? `${tools.lateCount} en retard` : 'Rien à signaler' }}</IonNote>
           </IonItem>
         </IonCardContent>
       </IonCard>

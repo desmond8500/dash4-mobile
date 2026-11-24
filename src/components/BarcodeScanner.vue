@@ -7,6 +7,7 @@ import { IonButton, IonButtons, IonContent, IonHeader, IonModal, IonNote, IonTit
  * Sans cette API, le bouton n'apparaît pas : la recherche par texte reste possible.
  */
 const open = defineModel<boolean>('open', { required: true })
+const props = withDefaults(defineProps<{ title?: string }>(), { title: 'Scanner un article' })
 const emit = defineEmits<{ code: [value: string] }>()
 
 type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
@@ -55,7 +56,7 @@ onBeforeUnmount(stop)
   <IonModal :is-open="open" @did-dismiss="open = false">
     <IonHeader>
       <IonToolbar>
-        <IonTitle>Scanner un article</IonTitle>
+        <IonTitle>{{ props.title }}</IonTitle>
         <IonButtons slot="end"><IonButton @click="open = false">Fermer</IonButton></IonButtons>
       </IonToolbar>
     </IonHeader>

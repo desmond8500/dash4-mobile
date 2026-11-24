@@ -29,11 +29,13 @@ import {
 } from '@ionic/vue'
 import { barcodeOutline, cubeOutline } from 'ionicons/icons'
 import { useStockStore } from '@/stores/stock'
+import { useToolsStore } from '@/stores/tools'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
 import { formatQty, locationsOf, scannerSupported, stockBadge } from '@/utils/stock'
 
 /** Stock : recherche et scan sans réseau, stock bas. */
 const store = useStockStore()
+const tools = useToolsStore()
 const router = useRouter()
 const segment = ref<'all' | 'low'>('all')
 const search = ref('')
@@ -66,6 +68,12 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
 }
 
 async function onCode(code: string): Promise<void> {
+  // Étiquette QR d'un outil scannée depuis le stock
+  const tool = tools.allowed() ? tools.byScan(code) : null
+  if (tool) {
+    void router.push({ name: 'tool', params: { id: tool.id } })
+    return
+  }
   const article = store.byCode(code)
   if (article) {
     void router.push({ name: 'stock-article', params: { id: article.id } })

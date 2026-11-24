@@ -9,6 +9,7 @@ const SUBJECT_ROUTES: Partial<Record<CommentableType, string>> = {
   clients: 'client',
   quotes: 'quote',
   invoices: 'invoice',
+  tools: 'tool',
 }
 
 /** Où mène une notification touchée sur le téléphone, ou null. */
@@ -21,6 +22,7 @@ export function notificationRoute(n: AppNotification): { name: string; params?: 
   if (n.client_request_id) return { name: 'client-request', params: { id: n.client_request_id } }
   if (n.tech_share_id) return { name: 'tech-share', params: { id: n.tech_share_id } }
   if (n.tech_access_request_id) return { name: 'tech-space', query: { onglet: 'demandes' } }
+  if (n.tool_id) return { name: 'tool', params: { id: n.tool_id } }
   if (n.task_id) return { name: 'task', params: { id: n.task_id } }
   return null
 }
