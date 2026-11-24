@@ -75,7 +75,7 @@ watch(
 const places = computed(() => (site.value ? placeOptions(site.value) : []))
 const parents = computed(() => (site.value ? parentOptions(site.value, form.systemId, existing.value?.id ?? null) : []))
 const hasChildren = computed(() => !!existing.value && !!site.value?.systems.some((s) => (s.equipment ?? []).some((e) => e.parent_id === existing.value!.id)))
-const articleOptions = computed(() => stock.active.map((a) => ({ value: a.id, label: a.designation, detail: [a.reference, a.brand?.name].filter(Boolean).join(' · ') })))
+const articleOptions = computed(() => stock.active.map((a) => ({ value: a.id, label: a.designation, detail: [a.reference, a.brand?.name].filter(Boolean).join(' · '), image: a.image_url ?? null })))
 
 /** Article du stock choisi : nom et modèle repris s'ils sont vides. */
 function onArticle(id: number | null): void {

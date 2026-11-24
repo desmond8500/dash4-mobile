@@ -16,6 +16,7 @@ import {
   IonToolbar,
   IonSearchbar,
   IonIcon,
+  IonThumbnail,
   IonSegment,
   IonSegmentButton,
   IonText,
@@ -24,6 +25,7 @@ import {
   useIonRouter,
 } from '@ionic/vue'
 import { computed, onMounted, ref } from 'vue'
+import { cubeOutline } from 'ionicons/icons'
 import { useClientsStore } from '@/stores/clients'
 import { useProjectsStore } from '@/stores/projects'
 import { useQuotesStore } from '@/stores/quotes'
@@ -166,6 +168,10 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
           <IonCardHeader><IonCardTitle class="small-title">{{ g.label }}<IonNote v-if="g.total > g.hits.length"> · {{ g.total }} résultats</IonNote></IonCardTitle></IonCardHeader>
           <IonCardContent class="flush">
             <IonItem v-for="h in g.hits" :key="h.key" button lines="full" @click="ionRouter.push(h.route)">
+              <IonThumbnail v-if="h.image !== undefined" slot="start" class="hit-thumb">
+                <img v-if="h.image" :src="h.image" alt="" loading="lazy" />
+                <IonIcon v-else :icon="cubeOutline" />
+              </IonThumbnail>
               <IonLabel class="ion-text-wrap"><h3>{{ h.title }}</h3><p v-if="h.subtitle">{{ h.subtitle }}</p></IonLabel>
             </IonItem>
             <IonItem v-if="g.total > g.hits.length && g.key !== 'contacts'" button lines="none" detail @click="ionRouter.push({ name: g.key === 'articles' ? 'stock' : g.key === 'quotes' ? 'projects' : g.key })">
@@ -297,6 +303,18 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
 </template>
 
 <style scoped>
+.hit-thumb {
+  --size: 40px;
+  --border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--ion-color-medium);
+}
+.hit-thumb img {
+  object-fit: contain;
+}
 .actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

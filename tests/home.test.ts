@@ -24,6 +24,12 @@ describe('accueil', () => {
     expect(homeSearch('t', { clients: [client] })).toEqual([])
   })
 
+  it('montre la photo des articles trouvés', () => {
+    expect(homeSearch('caméra', { articles: [{ ...article, image_url: 'https://api/x.png' } as Article] })[0]!.hits[0]!.image).toBe('https://api/x.png')
+    expect(homeSearch('caméra', { articles: [article] })[0]!.hits[0]!.image).toBeNull()
+    expect(homeSearch('hôtel', { clients: [client] })[0]!.hits[0]!.image).toBeUndefined()
+  })
+
   it('montre les actions rapides que le compte peut faire', () => {
     const technician = quickActions('technician', (p) => p.some((x) => ['client_requests.create', 'journals.create', 'accounting.create.own', 'stock.view'].includes(x)))
     expect(technician.map((a) => a.key)).toEqual(['request', 'journal', 'expense'])

@@ -12,9 +12,12 @@ import {
   IonNote,
   IonSearchbar,
   IonText,
+  IonThumbnail,
+  IonIcon,
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
+import { cubeOutline } from 'ionicons/icons'
 import { matches } from '@/utils/home'
 
 /**
@@ -26,6 +29,8 @@ export interface SearchOption {
   value: number
   label: string
   detail?: string | null
+  /** Photo (articles du stock) : une vignette s'affiche pour toutes les options dès qu'une option en a le champ. */
+  image?: string | null
 }
 
 const model = defineModel<number | null>({ default: null })
@@ -38,6 +43,9 @@ const emit = defineEmits<{ select: [value: number | null] }>()
 const open = ref(false)
 const query = ref('')
 const current = computed(() => props.options.find((o) => o.value === model.value) ?? null)
+const withImages = computed(() => props.options.some((o) => o.image !== undefined))
+const broken = ref(new Set<number>())
+const imageOf = (o: SearchOption | null) => (o?.image && !broken.value.has(o.value) ? o.image : null)
 const shown = computed(() => (query.value.trim() ? props.options.filter((o) => matches(query.value, o.label, o.detail)) : props.options))
 
 function choose(value: number | null): void {
@@ -50,6 +58,10 @@ function choose(value: number | null): void {
 
 <template>
   <IonItem button :detail="true" :disabled="props.disabled" @click="open = true">
+    <IonThumbnail v-if="withImages && !props.action && current" slot="start" class="thumb">
+      <img v-if="imageOf(current)" :src="imageOf(current)!" alt="" @error="broken.add(current.value)" />
+      <IonIcon v-else :icon="cubeOutline" />
+    </IonThumbnail>
     <IonLabel class="ion-text-wrap">
       <p>{{ props.label }}</p>
       <h3 v-if="!props.action && current">{{ current.label }}</h3>
@@ -74,6 +86,10 @@ function choose(value: number | null): void {
           <IonLabel>{{ props.nullLabel }}</IonLabel>
         </IonItem>
         <IonItem v-for="o in shown" :key="o.value" button @click="choose(o.value)">
+          <IonThumbnail v-if="withImages" slot="start" class="thumb">
+            <img v-if="imageOf(o)" :src="imageOf(o)!" alt="" loading="lazy" @error="broken.add(o.value)" />
+            <IonIcon v-else :icon="cubeOutline" />
+          </IonThumbnail>
           <IonLabel class="ion-text-wrap">
             <h3>{{ o.label }}</h3>
             <p v-if="o.detail">{{ o.detail }}</p>
@@ -85,3 +101,19 @@ function choose(value: number | null): void {
     </IonContent>
   </IonModal>
 </template>
+
+<style scoped>
+.thumb {
+  --size: 44px;
+  --border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--ion-color-medium);
+  font-size: 1.25rem;
+}
+.thumb img {
+  object-fit: contain;
+}
+</style>

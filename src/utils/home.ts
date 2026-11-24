@@ -18,6 +18,8 @@ export interface SearchHit {
   title: string
   subtitle: string
   route: { name: string; params?: Record<string, string | number> }
+  /** Photo de l'article (résultats « Articles »). */
+  image?: string | null
 }
 
 export interface SearchGroup {
@@ -65,6 +67,7 @@ export function homeSearch(query: string, data: SearchData, limit = 4): SearchGr
     group('articles', 'Articles', data.articles, (a) => [a.designation, a.reference, a.barcode], (a) => ({
       key: `article-${a.id}`, title: a.designation, subtitle: [a.reference, `${(a.quantity ?? 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${a.unit || 'u'} en stock`].filter(Boolean).join(' · '),
       route: { name: 'stock-article', params: { id: a.id } },
+      image: a.image_url ?? null,
     })),
     group('tasks', 'Tâches', data.tasks, (t) => [t.title, t.project?.name], (t) => ({
       key: `task-${t.id}`, title: t.title, subtitle: [t.project?.name, t.status.label].filter(Boolean).join(' · '), route: { name: 'task', params: { id: t.id } },
