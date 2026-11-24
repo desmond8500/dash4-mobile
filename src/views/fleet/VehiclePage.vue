@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { cameraOutline, carOutline } from 'ionicons/icons'
 import {
   IonBackButton,
   IonButton,
   IonButtons,
+  IonCheckbox,
+  IonIcon,
   IonContent,
   IonHeader,
   IonInput,
@@ -19,7 +22,9 @@ import {
   IonToolbar,
   toastController,
 } from '@ionic/vue'
-import { alertText, formatKm, vehicleSubtitle, type Vehicle } from '@dash4/shared'
+import { alertText, formatKm, vehicleSubtitle, type Document, type Vehicle } from '@dash4/shared'
+import { api } from '@/services/api'
+import { openPhotos } from '@/utils/lightbox'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { useFleetStore } from '@/stores/fleet'
 import { formatDate } from '@/utils/projects'
@@ -53,7 +58,38 @@ async function load(): Promise<void> {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => void load().then(loadGallery))
+
+// --- Photos ---------------------------------------------------------------------------------
+const photoInput = ref<HTMLInputElement | null>(null)
+const asMain = ref(false)
+const gallery = ref<Array<{ url: string; name: string }>>([])
+const pendingPhotos = computed(() => (vehicle.value ? store.pendingPhotosFor(vehicle.value.id) : 0))
+const mainPhoto = computed(() => vehicle.value?.photo_url ?? null)
+
+/** Photos de la galerie (documents image), quand le réseau est là. */
+async function loadGallery(): Promise<void> {
+  if (!vehicle.value || offline.value) return
+  try {
+    const docs = (await api.documents.list('vehicles', vehicle.value.id)).filter((d: Document) => (d.mime_type ?? '').startsWith('image/')).slice(0, 24)
+    gallery.value = await Promise.all(docs.map(async (d) => ({ url: URL.createObjectURL(await api.documents.download(d)), name: d.name })))
+  } catch {
+    gallery.value = []
+  }
+}
+
+async function onPhoto(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  if (!vehicle.value || !files.length) return
+  for (const [i, file] of files.entries()) await store.addPhoto(vehicle.value, file, asMain.value && i === 0)
+  asMain.value = false
+  const toast = await toastController.create({ message: files.length > 1 ? `${files.length} photos enregistrées : elles partent dès que le réseau est là.` : 'Photo enregistrée : elle part dès que le réseau est là.', duration: 2500, position: 'bottom' })
+  await toast.present()
+  // Photo principale changée : on recharge la fiche
+  setTimeout(() => void load().then(loadGallery), 1500)
+}
 
 async function save(): Promise<void> {
   if (!vehicle.value) return
@@ -83,6 +119,10 @@ async function save(): Promise<void> {
       <p v-else-if="error || !vehicle" class="ion-padding"><IonText color="medium">{{ error ?? 'Véhicule indisponible hors ligne.' }}</IonText></p>
       <template v-else>
         <p v-if="offline" class="ion-padding-horizontal"><IonText color="medium">Hors ligne : dernière copie gardée sur le téléphone.</IonText></p>
+        <div class="hero" :class="{ empty: !mainPhoto }">
+          <img v-if="mainPhoto" :src="mainPhoto" :alt="`Photo de ${vehicle.name}`" @click="openPhotos([{ url: mainPhoto!, name: vehicle.name }, ...gallery], mainPhoto!)" />
+          <IonIcon v-else :icon="carOutline" aria-hidden="true" />
+        </div>
         <IonList>
           <IonItem>
             <IonLabel class="ion-text-wrap">
@@ -95,6 +135,24 @@ async function save(): Promise<void> {
           <IonItem v-for="(a, i) in vehicle.alerts ?? []" :key="i" lines="none">
             <IonLabel class="ion-text-wrap"><IonText :color="stateColor(a.state)">{{ alertText(a) }}</IonText></IonLabel>
           </IonItem>
+        </IonList>
+
+        <IonList v-if="vehicle.can.add_photos || gallery.length">
+          <IonListHeader><IonLabel>Photos</IonLabel></IonListHeader>
+          <div v-if="gallery.length" class="gallery ion-padding-horizontal">
+            <img v-for="p in gallery" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(gallery, p.url)" />
+          </div>
+          <template v-if="vehicle.can.add_photos">
+            <IonItem lines="none">
+              <IonCheckbox v-model="asMain" label-placement="end">En faire la photo principale</IonCheckbox>
+            </IonItem>
+            <div class="ion-padding-horizontal">
+              <IonButton expand="block" fill="outline" @click="photoInput?.click()"><IonIcon slot="start" :icon="cameraOutline" />Prendre une photo</IonButton>
+              <input ref="photoInput" type="file" accept="image/*" capture="environment" multiple hidden @change="onPhoto" />
+            </div>
+            <p v-if="pendingPhotos" class="ion-padding-horizontal"><IonText color="medium">{{ pendingPhotos }} photo(s) en attente d'envoi.</IonText></p>
+            <p v-else class="ion-padding-horizontal"><IonText color="medium">État du véhicule, dégâts, compteur, papiers… Marche aussi sans réseau.</IonText></p>
+          </template>
         </IonList>
 
         <IonList v-if="vehicle.can.record_mileage">
@@ -147,3 +205,35 @@ async function save(): Promise<void> {
     </IonContent>
   </IonPage>
 </template>
+
+<style scoped>
+.hero {
+  height: 200px;
+  background: var(--ion-color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero ion-icon {
+  font-size: 4rem;
+  color: var(--ion-color-medium);
+}
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+.gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+</style>

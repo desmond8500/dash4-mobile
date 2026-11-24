@@ -19,12 +19,13 @@ import {
   IonSegment,
   IonSegmentButton,
   IonText,
+  IonThumbnail,
   IonTitle,
   IonToolbar,
   toastController,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { qrCodeOutline } from 'ionicons/icons'
+import { constructOutline, qrCodeOutline } from 'ionicons/icons'
 import { loanDueText, TOOL_STATUS_LABELS } from '@dash4/shared'
 import { useToolsStore } from '@/stores/tools'
 import { useAuthStore } from '@/stores/auth'
@@ -102,6 +103,10 @@ async function onCode(code: string): Promise<void> {
       <IonRefresher slot="fixed" @ion-refresh="onRefresh"><IonRefresherContent /></IonRefresher>
       <IonList>
         <IonItem v-for="t in shown" :key="t.id" button :router-link="{ name: 'tool', params: { id: t.id } }">
+          <IonThumbnail slot="start" class="thumb">
+            <img v-if="t.image_url" :src="t.image_url" alt="" loading="lazy" />
+            <IonIcon v-else :icon="constructOutline" />
+          </IonThumbnail>
           <IonLabel class="ion-text-wrap">
             <h2>{{ t.name }}</h2>
             <p>{{ [t.code, t.storage_location?.name].filter(Boolean).join(' · ') }}</p>
@@ -120,3 +125,19 @@ async function onCode(code: string): Promise<void> {
     </IonContent>
   </IonPage>
 </template>
+
+<style scoped>
+.thumb {
+  --size: 52px;
+  --border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--ion-color-medium);
+  font-size: 1.5rem;
+}
+.thumb img {
+  object-fit: contain;
+}
+</style>

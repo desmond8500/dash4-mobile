@@ -14,11 +14,14 @@ import {
   IonRefresher,
   IonRefresherContent,
   IonText,
+  IonThumbnail,
+  IonIcon,
   IonTitle,
   IonToolbar,
   type RefresherCustomEvent,
   IonSearchbar,
 } from '@ionic/vue'
+import { carOutline } from 'ionicons/icons'
 import { alertText, formatKm, vehicleSubtitle } from '@dash4/shared'
 import { useFleetStore } from '@/stores/fleet'
 import { stateColor } from '@/utils/fleet'
@@ -51,6 +54,10 @@ const shown = computed(() =>
       <IonRefresher slot="fixed" @ion-refresh="onRefresh"><IonRefresherContent /></IonRefresher>
       <IonList>
         <IonItem v-for="v in shown" :key="v.id" button :router-link="{ name: 'vehicle', params: { id: v.id } }">
+          <IonThumbnail slot="start" class="thumb">
+            <img v-if="v.photo_url" :src="v.photo_url" alt="" loading="lazy" />
+            <IonIcon v-else :icon="carOutline" />
+          </IonThumbnail>
           <IonLabel class="ion-text-wrap">
             <h2>{{ v.name }}</h2>
             <p>{{ vehicleSubtitle(v) || v.kind.label }} · {{ formatKm(v.mileage) }}</p>
@@ -65,3 +72,16 @@ const shown = computed(() =>
     </IonContent>
   </IonPage>
 </template>
+
+<style scoped>
+.thumb {
+  --size: 56px;
+  --border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-light);
+  color: var(--ion-color-medium);
+  font-size: 1.5rem;
+}
+</style>

@@ -31,6 +31,7 @@ import { useToolsStore } from '@/stores/tools'
 import { useProjectsStore } from '@/stores/projects'
 import { formatDate } from '@/utils/projects'
 import { displayedStatus, isoDateIn, toolColor } from '@/utils/tools'
+import { openPhotos } from '@/utils/lightbox'
 
 /**
  * Fiche d'un outil (ouverte aussi en scannant son étiquette QR) : qui l'a, jusqu'à quand ; prêter, enregistrer
@@ -145,6 +146,7 @@ async function remind(): Promise<void> {
       <p v-else-if="error || !tool" class="ion-padding"><IonText color="medium">{{ error ?? 'Outil indisponible hors ligne : ouvrez l’outillage avec le réseau une première fois.' }}</IonText></p>
       <template v-else>
         <p v-if="offline" class="ion-padding-horizontal"><IonText color="medium">Hors ligne : dernière copie gardée sur le téléphone.</IonText></p>
+        <div v-if="tool.image_url" class="hero"><img :src="tool.image_url" :alt="`Photo de ${tool.name}`" @click="openPhotos([{ url: tool.image_url!, name: tool.name }], tool.image_url!)" /></div>
         <IonList>
           <IonItem>
             <IonLabel class="ion-text-wrap">
@@ -235,6 +237,18 @@ async function remind(): Promise<void> {
 </template>
 
 <style scoped>
+.hero {
+  height: 180px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
 .actions {
   display: flex;
   flex-direction: column;
