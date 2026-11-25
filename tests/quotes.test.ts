@@ -25,6 +25,11 @@ describe('quantitatif du devis', () => {
     ).toEqual([{ label: 'Tout le devis' }, { label: 'Bâtiment A', sectionId: 1 }, { label: 'Bâtiment B', sectionId: 4 }])
   })
 
+  it('ne compte pas les lignes retirées du quantitatif', () => {
+    const hidden = { category: { value: 'device', label: 'Organe' }, show_in_quantities: false } as never
+    expect(quantitiesChoices([section(1, 'Bâtiment A', [hidden])])).toEqual([])
+  })
+
   it('ne propose rien sans matériel', () => {
     expect(quantitiesChoices([section(1, 'Forfaits', [line('service')])])).toEqual([])
   })
