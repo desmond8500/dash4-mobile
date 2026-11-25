@@ -12,6 +12,7 @@ import '@ionic/vue/css/display.css'
 import '@ionic/vue/css/palettes/dark.class.css'
 import './theme/variables.css'
 import './theme/cards.css'
+import './theme/design.css'
 
 import App from './App.vue'
 import { router } from './router'

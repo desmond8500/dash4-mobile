@@ -74,3 +74,88 @@ export function sortForDay(tasks: Task[]): Task[] {
   const rank = (t: Task) => (t.status.value === 'in_progress' ? 0 : t.status.value === 'done' || t.status.value === 'cancelled' ? 2 : 1)
   return [...tasks].sort((a, b) => rank(a) - rank(b) || (a.starts_at ?? '').localeCompare(b.starts_at ?? '') || Number(b.priority.value === 'high') - Number(a.priority.value === 'high'))
 }
+
+export type TaskSort = 'time' | 'priority'
+export interface TaskGroup {
+  key: string
+  label: string
+  /** Jour du groupe (pour les heures affichées), s'il y en a un. */
+  day: string | null
+  tasks: Task[]
+}
+
+const OPEN: TaskStatus[] = ['todo', 'in_progress', 'blocked']
+
+/** Jour de référence d'une tâche : son début, sinon son échéance. */
+function refDay(task: Task, today: string): string | null {
+  if (isOnDay(task, today)) return today
+  return task.starts_at?.slice(0, 10) ?? task.due_date ?? null
+}
+
+/**
+ * Tâches groupées comme dans l'écran « Tâches » : En retard, Aujourd'hui, Demain, les jours de la semaine,
+ * Plus tard, Sans date, puis Terminées (si demandé). Triées par heure ou par priorité (urgentes d'abord).
+ */
+export function groupTasks(tasks: Task[], today: string, options: { sort?: TaskSort; showDone?: boolean } = {}): TaskGroup[] {
+  const days = nextDays(new Date(`${today}T00:00:00`))
+  const tomorrow = days[1]!
+  const groups = new Map<string, TaskGroup>()
+  const add = (key: string, label: string, day: string | null, task: Task) => {
+    if (!groups.has(key)) groups.set(key, { key, label, day, tasks: [] })
+    groups.get(key)!.tasks.push(task)
+  }
+
+  for (const task of tasks) {
+    if (!OPEN.includes(task.status.value)) continue
+    const day = refDay(task, today)
+    if (day === today) add('today', "Aujourd'hui", today, task)
+    else if (task.is_overdue || (day && day < today)) add('late', 'En retard', null, task)
+    else if (!day) add('undated', 'Sans date', null, task)
+    else if (day === tomorrow) add('tomorrow', 'Demain', tomorrow, task)
+    else if (days.includes(day)) add(day, dayName(day), day, task)
+    else add('later', 'Plus tard', null, task)
+  }
+  if (options.showDone) {
+    const done = tasks.filter((t) => t.status.value === 'done').sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')).slice(0, 30)
+    for (const task of done) add('done', 'Terminées', null, task)
+  }
+
+  const order = ['late', 'today', 'tomorrow', ...days.slice(2), 'later', 'undated', 'done']
+  const byPriority = (t: Task) => (t.priority.value === 'high' ? 0 : t.priority.value === 'low' ? 2 : 1)
+  const when = (t: Task) => t.starts_at ?? (t.due_date ? `${t.due_date}T99` : '9999')
+  return order
+    .map((key) => groups.get(key))
+    .filter((g): g is TaskGroup => !!g)
+    .map((g) => ({
+      ...g,
+      tasks: g.key === 'done' ? g.tasks : [...g.tasks].sort((a, b) =>
+        options.sort === 'priority'
+          ? byPriority(a) - byPriority(b) || when(a).localeCompare(when(b))
+          : when(a).localeCompare(when(b)) || byPriority(a) - byPriority(b),
+      ),
+    }))
+}
+
+function dayName(day: string): string {
+  const label = new Date(`${day}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/**
+ * Pastille d'une tâche (à droite de la carte) : heure du jour, sinon date ou échéance ;
+ * rouge en retard ou urgente, jaune en cours ou bloquée, vert sinon, grise terminée.
+ */
+export function taskPill(task: Task, groupDay: string | null, today: string): { text: string; tone: 'danger' | 'warning' | 'success' | 'medium' } | null {
+  const short = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  const text =
+    (groupDay && hours(task, groupDay)) ||
+    (task.starts_at && task.starts_at.slice(0, 10) !== groupDay ? short(task.starts_at.slice(0, 10)) : '') ||
+    (task.due_date ? `Échéance ${short(task.due_date)}` : '')
+  const tone =
+    task.status.value === 'done' ? 'medium'
+    : task.is_overdue || task.priority.value === 'high' || (refDay(task, today) ?? today) < today ? 'danger'
+    : task.status.value === 'in_progress' || task.status.value === 'blocked' ? 'warning'
+    : 'success'
+  if (!text) return task.priority.value === 'high' && task.status.value !== 'done' ? { text: 'Urgente', tone } : null
+  return { text, tone }
+}
