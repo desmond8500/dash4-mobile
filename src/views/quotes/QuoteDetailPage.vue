@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LinkedContacts from '@/components/LinkedContacts.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
@@ -167,6 +168,8 @@ onMounted(async () => {
             </IonItem>
           </template>
         </IonList>
+
+        <LinkedContacts type="quotes" :id="quote.id" />
 
         <div class="ion-padding-horizontal tools">
           <IonSegment :value="order" @ion-change="setOrder($event.detail.value as 'quote' | 'category')">

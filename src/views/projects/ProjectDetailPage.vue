@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LinkedContacts from '@/components/LinkedContacts.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
@@ -159,6 +160,8 @@ onMounted(async () => {
             <IonLabel class="ion-text-wrap"><MarkdownView :text="project.description" /></IonLabel>
           </IonItem>
         </IonList>
+
+        <LinkedContacts type="projects" :id="project.id" />
 
         <IonList inset>
           <IonListHeader><IonLabel>Notes</IonLabel></IonListHeader>
