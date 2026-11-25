@@ -18,7 +18,8 @@ import App from './App.vue'
 import { router } from './router'
 import { useSyncStore } from './stores/sync'
 
-const app = createApp(App).use(IonicVue).use(createPinia()).use(router)
+// Apparence iOS partout (Android compris) : titres, listes, onglets, boutons et animations façon iPhone
+const app = createApp(App).use(IonicVue, { mode: 'ios' }).use(createPinia()).use(router)
 
 router.isReady().then(() => {
   app.mount('#app')

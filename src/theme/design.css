@@ -15,11 +15,18 @@
 }
 
 /* Grand titre à gauche dans les barres sans bouton « retour » (comme « My Lists ») */
+/* (en mode iOS, le titre est centré en position absolue : on le remet dans le flux pour qu'il reste
+   à gauche sans passer sous les boutons de droite) */
 ion-toolbar:not(:has(ion-buttons[slot='start'])) ion-title {
+  position: static;
+  width: auto;
+  flex: 1;
+  transform: none;
   font-size: 1.6rem;
   font-weight: 700;
   text-align: start;
   padding-inline: 16px 0;
+  pointer-events: auto;
 }
 ion-header ion-toolbar:first-of-type {
   --min-height: 60px;
