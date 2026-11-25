@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -20,12 +24,13 @@ import {
   IonToolbar,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { star } from 'ionicons/icons'
+import { calendarOutline, personOutline, star } from 'ionicons/icons'
 import { useProjectsStore } from '@/stores/projects'
 import { matchesSearch } from '@/offline/collection'
 import ClientLogo from '@/components/ClientLogo.vue'
 import { projectStatusColor } from '@/utils/projects'
 
+const viewMode = useViewMode('projects')
 const store = useProjectsStore()
 const segment = ref<'active' | 'all'>('active')
 const search = ref('')
@@ -58,6 +63,7 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
     <IonHeader>
       <IonToolbar>
         <IonTitle>Projets</IonTitle>
+        <IonButtons slot="end"><ViewModeButton v-model="viewMode" /></IonButtons>
       </IonToolbar>
       <IonToolbar>
         <IonSegment v-model="segment">
@@ -75,7 +81,23 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         <IonRefresherContent pulling-text="Tirer pour actualiser" refreshing-spinner="crescent" />
       </IonRefresher>
 
-      <IonList>
+      <CardList v-if="viewMode === 'cards'" :items="list" :to="(p) => ({ name: 'project', params: { id: p.id } })">
+        <template #card="{ item }">
+          <div class="card-head">
+            <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+            <div>
+              <span class="card-title"><IonIcon v-if="item.is_favorite" :icon="star" color="warning" aria-label="Favori" /> {{ item.name }}</span>
+              <span class="card-sub">{{ item.client?.name }}</span>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span><IonIcon :icon="personOutline" /> {{ item.manager?.full_name ?? 'Pas de chef de projet' }}</span>
+            <span v-if="item.start_date || item.end_date"><IonIcon :icon="calendarOutline" /> {{ [item.start_date, item.end_date].filter(Boolean).map((d) => new Date(`${d}T00:00:00`).toLocaleDateString('fr-FR')).join(' → ') }}</span>
+          </div>
+          <div class="card-foot"><IonBadge :color="projectStatusColor(item.status.value)">{{ item.status.label }}</IonBadge></div>
+        </template>
+      </CardList>
+      <IonList v-else>
         <IonItem v-for="p in list" :key="p.id" :router-link="{ name: 'project', params: { id: p.id } }" detail>
           <ClientLogo slot="start" :name="p.name" :url="p.logo_url" :size="40" />
           <IonLabel>

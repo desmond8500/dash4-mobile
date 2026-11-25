@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { matches } from '@/utils/home'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
+  IonButtons,
   IonContent,
   IonFab,
   IonFabButton,
@@ -22,11 +26,12 @@ import {
   type RefresherCustomEvent,
   IonSearchbar,
 } from '@ionic/vue'
-import { add, cloudOfflineOutline, imagesOutline } from 'ionicons/icons'
+import { add, calendarOutline, cloudOfflineOutline, imagesOutline, peopleOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useJournalsStore } from '@/stores/journals'
 
 /** Rapports d'intervention : les miens, ceux en attente d'envoi. */
+const viewMode = useViewMode('journals')
 const store = useJournalsStore()
 const auth = useAuthStore()
 
@@ -51,7 +56,8 @@ const shown = computed(() =>
 <template>
   <IonPage>
     <IonHeader>
-      <IonToolbar><IonTitle>Rapports</IonTitle></IonToolbar>
+      <IonToolbar><IonTitle>Rapports</IonTitle>
+        <IonButtons slot="end"><ViewModeButton v-model="viewMode" /></IonButtons></IonToolbar>
       <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Titre, projet, client, intervenant…" aria-label="Rechercher" /></IonToolbar>
     </IonHeader>
     <IonContent>
@@ -71,7 +77,23 @@ const shown = computed(() =>
         </IonItem>
       </IonList>
 
-      <IonList inset>
+      <CardList v-if="viewMode === 'cards'" :items="shown" :to="(j) => ({ name: 'journal', params: { id: j.id } })">
+        <template #card="{ item }">
+          <div class="card-head">
+            <div>
+              <span class="card-title">{{ item.title }}</span>
+              <span class="card-sub">{{ [item.project?.name, item.client?.name].filter(Boolean).join(' · ') }}</span>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span><IonIcon :icon="calendarOutline" /> {{ date(item.date) }}</span>
+            <span v-if="item.participants?.length"><IonIcon :icon="peopleOutline" /> {{ item.participants.map((p) => p.name).join(', ') }}</span>
+            <span v-if="item.photos_count || store.photosWaiting(item.client_uuid)"><IonIcon :icon="imagesOutline" /> {{ (item.photos_count ?? 0) + store.photosWaiting(item.client_uuid) }} photo(s)</span>
+          </div>
+          <div class="card-foot"><IonBadge color="medium">{{ item.type.label }}</IonBadge></div>
+        </template>
+      </CardList>
+      <IonList v-else inset>
         <IonItem v-for="j in shown" :key="j.id" :router-link="{ name: 'journal', params: { id: j.id } }" detail>
           <IonLabel class="ion-text-wrap">
             <h3>{{ j.title }}</h3>

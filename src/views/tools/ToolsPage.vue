@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -25,7 +28,7 @@ import {
   toastController,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { constructOutline, qrCodeOutline } from 'ionicons/icons'
+import { constructOutline, locationOutline, personOutline, qrCodeOutline } from 'ionicons/icons'
 import { loanDueText, TOOL_STATUS_LABELS } from '@dash4/shared'
 import { useToolsStore } from '@/stores/tools'
 import { useAuthStore } from '@/stores/auth'
@@ -35,6 +38,7 @@ import { scannerSupported } from '@/utils/stock'
 import { displayedStatus, toolColor } from '@/utils/tools'
 
 /** Outillage : outils visibles par le compte (hors ligne), scan de l'étiquette QR pour ouvrir la fiche. */
+const viewMode = useViewMode('tools')
 const store = useToolsStore()
 const auth = useAuthStore()
 const router = useRouter()
@@ -85,6 +89,7 @@ async function onCode(code: string): Promise<void> {
         <IonButtons slot="start"><IonBackButton default-href="/accueil" text="Retour" /></IonButtons>
         <IonTitle>Outillage</IonTitle>
         <IonButtons slot="end">
+          <ViewModeButton v-model="viewMode" />
           <IonButton v-if="canScan" aria-label="Scanner l'étiquette d'un outil" @click="scanOpen = true"><IonIcon slot="icon-only" :icon="qrCodeOutline" /></IonButton>
         </IonButtons>
       </IonToolbar>
@@ -101,7 +106,26 @@ async function onCode(code: string): Promise<void> {
     </IonHeader>
     <IonContent>
       <IonRefresher slot="fixed" @ion-refresh="onRefresh"><IonRefresherContent /></IonRefresher>
-      <IonList>
+      <CardList v-if="viewMode === 'cards'" :items="shown" :to="(t) => ({ name: 'tool', params: { id: t.id } })">
+        <template #card="{ item }">
+          <div class="card-head">
+            <IonThumbnail class="thumb">
+              <img v-if="item.image_url" :src="item.image_url" alt="" loading="lazy" />
+              <IonIcon v-else :icon="constructOutline" />
+            </IonThumbnail>
+            <div>
+              <span class="card-title">{{ item.name }}</span>
+              <span class="card-sub">{{ [item.code, item.serial_number ? `S/N ${item.serial_number}` : null].filter(Boolean).join(' · ') }}</span>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span><IonIcon :icon="locationOutline" /> {{ item.storage_location?.name ?? 'Emplacement non indiqué' }}</span>
+            <span v-if="item.current_loan"><IonIcon :icon="personOutline" /> {{ item.current_loan.borrower_label }} ·&nbsp;<IonText :color="toolColor(item.current_loan.state)">{{ loanDueText(item.current_loan) }}</IonText></span>
+          </div>
+          <div class="card-foot"><IonNote :color="toolColor(statusOf(item))"><strong>{{ TOOL_STATUS_LABELS[statusOf(item)] }}</strong></IonNote></div>
+        </template>
+      </CardList>
+      <IonList v-else>
         <IonItem v-for="t in shown" :key="t.id" button :router-link="{ name: 'tool', params: { id: t.id } }">
           <IonThumbnail slot="start" class="thumb">
             <img v-if="t.image_url" :src="t.image_url" alt="" loading="lazy" />

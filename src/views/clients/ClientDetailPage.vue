@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import CardList from '@/components/CardList.vue'
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { markdownToText } from '@dash4/shared'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted } from 'vue'
@@ -40,6 +43,8 @@ import { useInvoicesStore } from '@/stores/invoices'
 import { useQuotesStore } from '@/stores/quotes'
 
 const props = defineProps<{ id: string }>()
+const contactsView = useViewMode('contacts')
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('')
 const auth = useAuthStore()
 const store = useClientsStore()
 const requests = useClientRequestsStore()
@@ -162,6 +167,7 @@ onMounted(() => {
         <IonList inset>
           <IonListHeader>
             <IonLabel>Contacts</IonLabel>
+            <ViewModeButton v-if="contacts.length" v-model="contactsView" />
             <IonButton
               v-if="auth.can('clients.create')"
               :router-link="{ name: 'contact-new', params: { id: client.id } }"
@@ -179,7 +185,26 @@ onMounted(() => {
             </IonLabel>
           </IonItem>
 
-          <IonItem v-for="contact in contacts" :key="contact.id">
+          <CardList v-if="contactsView === 'cards'" :items="contacts" card-class="contact-badge" min-width="14rem">
+            <template #card="{ item }">
+              <div class="badge-band" />
+              <div class="badge-avatar" aria-hidden="true">{{ initials(item.full_name) }}</div>
+              <div class="badge-body">
+                <span class="badge-name">{{ item.civility ? `${item.civility.label} ` : '' }}{{ item.full_name }}</span>
+                <span v-if="item.job_title" class="badge-job">{{ item.job_title }}</span>
+                <span v-if="item.company" class="badge-company">{{ item.company }}</span>
+              </div>
+              <div v-if="contactPhones(item).length || contactEmails(item).length" class="badge-channels">
+                <IonButton v-if="contactPhones(item)[0]" size="small" fill="outline" :href="telHref(contactPhones(item)[0]!)">
+                  <IonIcon slot="start" :icon="callOutline" /> Appeler
+                </IonButton>
+                <IonButton v-if="contactEmails(item)[0]" size="small" fill="outline" :href="mailHref(contactEmails(item)[0]!)">
+                  <IonIcon slot="start" :icon="mailOutline" /> E-mail
+                </IonButton>
+              </div>
+            </template>
+          </CardList>
+          <IonItem v-for="contact in contactsView === 'cards' ? [] : contacts" :key="contact.id">
             <IonLabel class="ion-text-wrap">
               <h3>{{ contact.civility ? `${contact.civility.label} ` : '' }}{{ contact.full_name }}</h3>
               <p v-if="contact.job_title">{{ contact.job_title }}</p>

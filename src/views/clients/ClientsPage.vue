@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
+  IonButtons,
   IonContent,
   IonFab,
   IonFabButton,
@@ -22,12 +26,13 @@ import {
   IonToolbar,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { add, cloudUploadOutline, star } from 'ionicons/icons'
+import { add, callOutline, cloudUploadOutline, locationOutline, mailOutline, star } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { matchesSearch } from '@/offline/collection'
 import ClientLogo from '@/components/ClientLogo.vue'
 
+const viewMode = useViewMode('clients')
 const auth = useAuthStore()
 const store = useClientsStore()
 const search = ref('')
@@ -65,6 +70,7 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
     <IonHeader>
       <IonToolbar>
         <IonTitle>Clients</IonTitle>
+        <IonButtons slot="end"><ViewModeButton v-model="viewMode" /></IonButtons>
       </IonToolbar>
       <IonToolbar>
         <IonSearchbar v-model="search" placeholder="Nom, téléphone, e-mail" :debounce="150" />
@@ -90,7 +96,26 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </IonItem>
       </IonList>
 
-      <IonList>
+      <CardList v-if="viewMode === 'cards'" :items="filtered" :to="(c) => ({ name: 'client', params: { id: c.id } })">
+        <template #card="{ item }">
+          <div class="card-head">
+            <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+            <div>
+              <span class="card-title"><IonIcon v-if="item.is_favorite" :icon="star" color="warning" aria-label="Favori" /> {{ item.name }}</span>
+              <span class="card-sub">{{ item.type.label }}</span>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span v-if="item.address"><IonIcon :icon="locationOutline" /> {{ item.address }}</span>
+            <span v-if="item.phones?.[0]"><IonIcon :icon="callOutline" /> {{ item.phones[0].number }}</span>
+            <span v-if="item.emails?.[0]"><IonIcon :icon="mailOutline" /> {{ item.emails[0].address }}</span>
+          </div>
+          <div class="card-foot">
+            <IonBadge :color="item.status.value === 'active' ? 'success' : 'medium'">{{ item.status.label }}</IonBadge>
+          </div>
+        </template>
+      </CardList>
+      <IonList v-else>
         <IonItem
           v-for="client in filtered"
           :key="client.id"

@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
+  IonButtons,
   IonContent,
   IonFab,
   IonFabButton,
@@ -23,13 +27,14 @@ import {
   IonToolbar,
   type RefresherCustomEvent,
 } from '@ionic/vue'
-import { add, alertCircle, arrowUp, cloudUploadOutline } from 'ionicons/icons'
+import { add, alertCircle, arrowUp, callOutline, cloudUploadOutline, personOutline } from 'ionicons/icons'
 import type { ClientRequest } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { isOverdue, matchesSearch } from '@/offline/collection'
 import { requesterLabel, statusColor } from '@/utils/requests'
 
+const viewMode = useViewMode('client_requests')
 const auth = useAuthStore()
 const store = useClientRequestsStore()
 const segment = ref<'open' | 'closed'>('open')
@@ -69,6 +74,7 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
     <IonHeader>
       <IonToolbar>
         <IonTitle>Demandes</IonTitle>
+        <IonButtons slot="end"><ViewModeButton v-model="viewMode" /></IonButtons>
       </IonToolbar>
       <IonToolbar>
         <IonSegment v-model="segment">
@@ -104,7 +110,27 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </IonItem>
       </IonList>
 
-      <IonList>
+      <CardList v-if="viewMode === 'cards'" :items="list" :to="(r) => ({ name: 'client-request', params: { id: r.id } })">
+        <template #card="{ item }">
+          <div class="card-head">
+            <IonIcon v-if="item.priority.value === 'high'" :icon="arrowUp" color="danger" aria-label="Urgente" />
+            <div>
+              <span class="card-title">{{ requesterLabel(item) }}</span>
+              <span class="card-sub">{{ item.source.label }} · {{ shortDate(item.created_at) }}</span>
+            </div>
+          </div>
+          <div class="card-text">{{ item.body }}</div>
+          <div class="card-meta">
+            <span><IonIcon :icon="personOutline" /> {{ item.assignee?.full_name ?? 'Personne en charge' }}</span>
+            <span v-if="!item.client && item.contact_phone"><IonIcon :icon="callOutline" /> {{ item.contact_phone }}</span>
+          </div>
+          <div class="card-foot">
+            <IonBadge :color="statusColor(item.status.value)">{{ item.status.label }}</IonBadge>
+            <IonBadge v-if="overdue(item)" color="danger"><IonIcon :icon="alertCircle" /> En retard</IonBadge>
+          </div>
+        </template>
+      </CardList>
+      <IonList v-else>
         <IonItem
           v-for="request in list"
           :key="request.id"

@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import ViewModeButton from '@/components/ViewModeButton.vue'
+import CardList from '@/components/CardList.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { matches } from '@/utils/home'
 import { computed, onMounted, ref } from 'vue'
 import {
   IonBadge,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -22,13 +26,14 @@ import {
   type RefresherCustomEvent,
   IonSearchbar,
 } from '@ionic/vue'
-import { alertCircle } from 'ionicons/icons'
+import { alertCircle, calendarOutline, listOutline, peopleOutline } from 'ionicons/icons'
 import { OPEN_TASK_STATUSES, type Task } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import { useTasksStore } from '@/stores/tasks'
 import { hours, isOnDay, isoDay, nextDays, sortForDay, taskColor } from '@/utils/tasks'
 
 /** Mes tâches : aujourd'hui, les 7 prochains jours, toutes les ouvertes, terminées. */
+const viewMode = useViewMode('tasks')
 const store = useTasksStore()
 const auth = useAuthStore()
 const segment = ref<'today' | 'week' | 'open' | 'done'>('today')
@@ -65,7 +70,8 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
 <template>
   <IonPage>
     <IonHeader>
-      <IonToolbar><IonTitle>Tâches</IonTitle></IonToolbar>
+      <IonToolbar><IonTitle>Tâches</IonTitle>
+        <IonButtons slot="end"><ViewModeButton v-model="viewMode" /></IonButtons></IonToolbar>
       <IonToolbar><IonSearchbar v-model="query" :debounce="150" placeholder="Tâche, projet, personne…" aria-label="Rechercher" /></IonToolbar>
       <IonToolbar>
         <IonSegment v-model="segment" scrollable>
@@ -96,6 +102,29 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         <div v-if="!week.length" class="ion-padding ion-text-center"><IonText color="medium"><p>Rien de planifié ces 7 prochains jours.</p></IonText></div>
       </template>
 
+      <CardList
+        v-else-if="viewMode === 'cards'"
+        :items="segment === 'today' ? todayTasks : segment === 'open' ? openTasks : doneTasks"
+        :to="(t) => ({ name: 'task', params: { id: t.id } })"
+      >
+        <template #card="{ item }">
+          <div class="card-head">
+            <div>
+              <span class="card-title"><IonIcon v-if="item.priority.value === 'high'" :icon="alertCircle" color="danger" /> {{ item.title }}</span>
+              <span class="card-sub">{{ place(item) }}</span>
+            </div>
+          </div>
+          <div class="card-meta">
+            <span v-if="item.starts_at"><IonIcon :icon="calendarOutline" /> {{ segment === 'today' ? hours(item, today) : new Date(item.starts_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) }}</span>
+            <span v-if="item.assignees?.length"><IonIcon :icon="peopleOutline" /> {{ item.assignees.map((a) => a.full_name).join(', ') }}</span>
+            <span v-if="item.subtasks_count"><IonIcon :icon="listOutline" /> {{ item.subtasks_done }}/{{ item.subtasks_count }} sous-tâches</span>
+          </div>
+          <div class="card-foot">
+            <IonBadge :color="taskColor(item.status.value)">{{ item.status.label }}</IonBadge>
+            <IonBadge v-if="item.is_overdue" color="danger">En retard</IonBadge>
+          </div>
+        </template>
+      </CardList>
       <IonList v-else inset>
         <IonItem
           v-for="t in segment === 'today' ? todayTasks : segment === 'open' ? openTasks : doneTasks"
