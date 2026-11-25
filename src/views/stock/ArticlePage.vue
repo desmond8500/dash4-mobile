@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LinkedPracticalTools from '@/components/practicalTools/LinkedPracticalTools.vue'
 import SearchSelect from '@/components/SearchSelect.vue'
 import { computed, onMounted, ref } from 'vue'
 import {
@@ -127,6 +128,8 @@ async function save(): Promise<void> {
           <IonItem v-if="article.location"><IonLabel>Emplacement</IonLabel><IonNote slot="end">{{ article.location }}</IonNote></IonItem>
           <IonItem v-if="article.unit_price !== undefined"><IonLabel>Prix de vente</IonLabel><IonNote slot="end">{{ formatMoney(article.unit_price) }}</IonNote></IonItem>
         </IonList>
+
+        <LinkedPracticalTools :article-id="article.id" :brand-id="article.brand_id" :provider-id="article.provider_id" />
 
         <IonList v-if="canMove" inset>
           <IonListHeader><IonLabel>Mouvement</IonLabel></IonListHeader>

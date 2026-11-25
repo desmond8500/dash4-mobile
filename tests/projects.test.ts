@@ -21,11 +21,11 @@ describe('onglet Projets', () => {
     visibleTabs(type, (wanted) => wanted.some((p) => permissions.includes(p))).map((t) => t.name)
 
   it('apparaît pour le bureau, avec tous les projets ou seulement les siens', () => {
-    expect(names('manager', ['projects.view'])).toEqual(['home', 'projects', 'messages', 'profile'])
-    expect(names('manager', ['projects.view.own'])).toEqual(['home', 'projects', 'messages', 'profile'])
+    expect(names('manager', ['projects.view'])).toEqual(['home', 'projects', 'practical-tools', 'messages', 'profile'])
+    expect(names('manager', ['projects.view.own'])).toEqual(['home', 'projects', 'practical-tools', 'messages', 'profile'])
   })
 
   it("n'apparaît pas pour un technicien (il verra les projets de ses tâches)", () => {
-    expect(names('technician', ['projects.view.own'])).toEqual(['home', 'messages', 'profile'])
+    expect(names('technician', ['projects.view.own'])).toEqual(['home', 'practical-tools', 'messages', 'profile'])
   })
 })

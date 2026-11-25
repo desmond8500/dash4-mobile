@@ -113,6 +113,19 @@ export const router = createRouter({
           meta: { accountTypes: ['manager', 'technician'], permissions: ['tools.view', 'tools.view.own'] },
         },
         {
+          path: 'outils-pratiques',
+          name: 'practical-tools',
+          component: () => import('@/views/practicalTools/PracticalToolsPage.vue'),
+          meta: { accountTypes: ['manager', 'technician'], permissions: [] },
+        },
+        {
+          path: 'outils-pratiques/:slug',
+          name: 'practical-tool',
+          component: () => import('@/views/practicalTools/PracticalToolPage.vue'),
+          props: true,
+          meta: { accountTypes: ['manager', 'technician'], permissions: [] },
+        },
+        {
           path: 'vehicules',
           name: 'vehicles',
           component: () => import('@/views/fleet/VehiclesPage.vue'),
