@@ -66,6 +66,7 @@ describe('onglet Demandes', () => {
     expect(names('technician', ['client_requests.view.own', 'client_requests.create'])).toEqual([
       'home',
       'client-requests',
+      'practical-tools',
       'messages',
       'profile',
     ])
@@ -73,6 +74,7 @@ describe('onglet Demandes', () => {
       'home',
       'client-requests',
       'clients',
+      'practical-tools',
       'messages',
       'profile',
     ])
