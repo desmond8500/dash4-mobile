@@ -81,7 +81,7 @@ describe('écran Tâches groupé par jour', () => {
       ['En retard', [7]],
       ["Aujourd'hui", [2, 1]],
       ['Demain', [3]],
-      ['Mercredi 26 novembre', [4]],
+      ['Jeudi 26 novembre', [4]],
       ['Plus tard', [5]],
       ['Sans date', [6]],
     ])
