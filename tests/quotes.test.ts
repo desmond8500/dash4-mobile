@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { quoteStatusColor } from '../src/utils/quotes'
+import { quantitiesChoices, quoteStatusColor } from '../src/utils/quotes'
 
 describe('devis sur le téléphone', () => {
   it('colore les statuts', () => {
@@ -7,5 +7,25 @@ describe('devis sur le téléphone', () => {
     expect(quoteStatusColor('sent')).toBe('primary')
     expect(quoteStatusColor('accepted')).toBe('success')
     expect(quoteStatusColor('refused')).toBe('danger')
+  })
+})
+
+describe('quantitatif du devis', () => {
+  const line = (value: string) => ({ category: { value, label: value } }) as never
+  const section = (id: number, title: string, lines: never[], is_visible = true) => ({ id, title, is_visible, lines })
+
+  it('propose tout le devis puis les sections imprimées qui ont du matériel', () => {
+    expect(
+      quantitiesChoices([
+        section(1, 'Bâtiment A', [line('device'), line('service')]),
+        section(2, 'Main-d\'œuvre', [line('service')]),
+        section(3, 'Option', [line('device')], false),
+        section(4, 'Bâtiment B', [line('cable')]),
+      ]),
+    ).toEqual([{ label: 'Tout le devis' }, { label: 'Bâtiment A', sectionId: 1 }, { label: 'Bâtiment B', sectionId: 4 }])
+  })
+
+  it('ne propose rien sans matériel', () => {
+    expect(quantitiesChoices([section(1, 'Forfaits', [line('service')])])).toEqual([])
   })
 })

@@ -20,6 +20,8 @@ import {
   IonText,
   IonTitle,
   IonToolbar,
+  actionSheetController,
+  toastController,
 } from '@ionic/vue'
 import { formatMoney, groupLinesByCategory, type Quote, type QuoteLine } from '@dash4/shared'
 import { kv } from '@/offline/db'
@@ -28,7 +30,9 @@ import { useQuotesStore } from '@/stores/quotes'
 import { useInvoicesStore } from '@/stores/invoices'
 import InvoiceList from '@/components/InvoiceList.vue'
 import { formatDate } from '@/utils/projects'
-import { quoteStatusColor } from '@/utils/quotes'
+import { quantitiesChoices, quoteStatusColor } from '@/utils/quotes'
+import { api } from '@/services/api'
+import { useSyncStore } from '@/stores/sync'
 
 /** Devis en lecture sur le téléphone (la rédaction se fait sur le web). */
 const props = defineProps<{ id: string }>()
@@ -57,6 +61,41 @@ const groupsOf = (lines: QuoteLine[]) => (order.value === 'category' ? groupLine
 
 // Vers le chantier : gestionnaires du chantier, devis rattaché à un projet
 const canToSite = computed(() => !!quote.value?.project_id && auth.canAny(['sites.update', 'sites.update.own']))
+
+// Quantitatif en PDF (sans prix ni forfaits) : tout le devis ou une section ; demande le réseau
+const sync = useSyncStore()
+const quantities = computed(() => quantitiesChoices(quote.value?.sections ?? []))
+const exporting = ref(false)
+
+async function toast(message: string, color = 'warning'): Promise<void> {
+  await (await toastController.create({ message, color, duration: 3000 })).present()
+}
+
+async function openQuantities(sectionId?: number): Promise<void> {
+  if (!quote.value) return
+  if (!sync.online) return void toast('Le quantitatif demande le réseau.')
+  exporting.value = true
+  try {
+    const url = URL.createObjectURL(await api.quotes.quantities(quote.value.id, { sectionId }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    void toast((e as Error).message, 'danger')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function chooseQuantities(): Promise<void> {
+  const sheet = await actionSheetController.create({
+    header: 'Quantitatif (sans forfaits)',
+    buttons: [
+      ...quantities.value.map((c) => ({ text: c.label, handler: () => void openQuantities(c.sectionId) })),
+      { text: 'Annuler', role: 'cancel' },
+    ],
+  })
+  await sheet.present()
+}
 
 onMounted(async () => {
   void invoices.load().then(() => invoices.refresh()).catch(() => undefined)
@@ -134,6 +173,10 @@ onMounted(async () => {
             <IonSegmentButton value="quote"><IonLabel>Ordre du devis</IonLabel></IonSegmentButton>
             <IonSegmentButton value="category"><IonLabel>Par catégorie</IonLabel></IonSegmentButton>
           </IonSegment>
+          <IonButton v-if="quantities.length" expand="block" fill="outline" :disabled="exporting" @click="chooseQuantities">
+            <IonSpinner v-if="exporting" slot="start" name="crescent" />
+            Quantitatif (sans forfaits)
+          </IonButton>
           <IonButton v-if="canToSite" expand="block" fill="outline" :router-link="{ name: 'quote-site', params: { id: quote.id } }">Créer les appareils du chantier</IonButton>
         </div>
 
