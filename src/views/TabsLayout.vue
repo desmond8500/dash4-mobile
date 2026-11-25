@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { IonBadge, IonContent, IonIcon, IonLabel, IonModal, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs } from '@ionic/vue'
-import { appsOutline } from 'ionicons/icons'
+import { appsOutline, arrowUpOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { splitTabs } from '@/tabs'
@@ -75,6 +75,14 @@ function go(name: string): void {
   moreOpen.value = false
   void router.push({ name })
 }
+
+/** Fait remonter la page affichée en haut (le contenu défile dans son propre <ion-content>, pas la fenêtre). */
+async function scrollTop(): Promise<void> {
+  const content = document.querySelector('.ion-page:not(.ion-page-invisible):not(.ion-page-hidden) ion-content') as
+    | (Element & { scrollToTop: (duration?: number) => Promise<void> })
+    | null
+  await content?.scrollToTop(300)
+}
 </script>
 
 <template>
@@ -97,6 +105,10 @@ function go(name: string): void {
         </button>
       </IonTabBar>
     </IonTabs>
+
+    <button type="button" class="scroll-top" aria-label="Haut de page" title="Haut de page" @click="scrollTop">
+      <IonIcon :icon="arrowUpOutline" aria-hidden="true" />
+    </button>
 
     <IonModal :is-open="moreOpen" :initial-breakpoint="0.6" :breakpoints="[0, 0.6, 1]" handle-behavior="cycle" @did-dismiss="moreOpen = false">
       <IonContent class="ion-padding">
@@ -178,5 +190,26 @@ function go(name: string): void {
 .more-item-icon ion-icon {
   font-size: 26px;
   color: var(--ion-color-primary);
+}
+
+.scroll-top {
+  position: fixed;
+  right: 0.75rem;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  z-index: 20;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.scroll-top ion-icon {
+  font-size: 20px;
 }
 </style>
