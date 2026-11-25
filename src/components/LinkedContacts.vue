@@ -38,11 +38,11 @@ onMounted(async () => {
         </IonLabel>
         <IonNote v-if="link.role" slot="end">{{ link.role }}</IonNote>
       </IonItem>
-      <IonItem v-for="p in contactChannels(link.contact).phones" :key="`p-${link.id}-${p}`" :href="telHref(p)" lines="none" detail="false">
+      <IonItem v-for="p in contactChannels(link.contact).phones" :key="`p-${link.id}-${p}`" :href="telHref(p)" lines="none" :detail="false">
         <IonIcon slot="start" :icon="callOutline" />
         <IonLabel>{{ p }}</IonLabel>
       </IonItem>
-      <IonItem v-for="m in contactChannels(link.contact).emails" :key="`m-${link.id}-${m}`" :href="mailHref(m)" lines="none" detail="false">
+      <IonItem v-for="m in contactChannels(link.contact).emails" :key="`m-${link.id}-${m}`" :href="mailHref(m)" lines="none" :detail="false">
         <IonIcon slot="start" :icon="mailOutline" />
         <IonLabel>{{ m }}</IonLabel>
       </IonItem>
