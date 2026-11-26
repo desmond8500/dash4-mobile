@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { IonBadge, IonContent, IonIcon, IonLabel, IonModal, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs } from '@ionic/vue'
 import { appsOutline, arrowUpOutline } from 'ionicons/icons'
+import { besideFab } from '@/utils/layout'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { splitTabs } from '@/tabs'
@@ -76,6 +77,32 @@ function go(name: string): void {
   void router.push({ name })
 }
 
+/**
+ * Bouton « Haut de page » à côté du bouton rond d'ajout de l'écran affiché (à sa gauche, centré sur lui),
+ * sinon dans le coin. Position relevée à chaque changement d'écran et quand la fenêtre change de taille.
+ */
+const scrollTopStyle = ref<Record<string, string>>({})
+function placeScrollTop(): void {
+  const fab = [...document.querySelectorAll<HTMLElement>('ion-fab[vertical="bottom"] ion-fab-button')].find((el) => el.offsetParent !== null)
+  const rect = fab?.getBoundingClientRect()
+  scrollTopStyle.value = rect && rect.width ? besideFab(rect, window.innerWidth, window.innerHeight) : {}
+}
+let placeTimers: number[] = []
+function schedulePlacement(): void {
+  placeTimers.forEach((t) => window.clearTimeout(t))
+  // Juste après l'affichage, puis à la fin de l'animation de transition des écrans
+  placeTimers = [0, 120, 450].map((ms) => window.setTimeout(placeScrollTop, ms))
+}
+watch(() => route.fullPath, schedulePlacement)
+onMounted(() => {
+  schedulePlacement()
+  window.addEventListener('resize', schedulePlacement)
+})
+onUnmounted(() => {
+  placeTimers.forEach((t) => window.clearTimeout(t))
+  window.removeEventListener('resize', schedulePlacement)
+})
+
 /** Fait remonter la page affichée en haut (le contenu défile dans son propre <ion-content>, pas la fenêtre). */
 async function scrollTop(): Promise<void> {
   const content = document.querySelector('.ion-page:not(.ion-page-invisible):not(.ion-page-hidden) ion-content') as
@@ -106,7 +133,7 @@ async function scrollTop(): Promise<void> {
       </IonTabBar>
     </IonTabs>
 
-    <button type="button" class="scroll-top" aria-label="Haut de page" title="Haut de page" @click="scrollTop">
+    <button type="button" class="scroll-top" :style="scrollTopStyle" aria-label="Haut de page" title="Haut de page" @click="scrollTop">
       <IonIcon :icon="arrowUpOutline" aria-hidden="true" />
     </button>
 
