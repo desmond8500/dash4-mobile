@@ -24,5 +24,6 @@ export function notificationRoute(n: AppNotification): { name: string; params?: 
   if (n.tech_access_request_id) return { name: 'tech-space', query: { onglet: 'demandes' } }
   if (n.tool_id) return { name: 'tool', params: { id: n.tool_id } }
   if (n.task_id) return { name: 'task', params: { id: n.task_id } }
+  if (n.kind === 'site.assigned' && n.project_id) return { name: 'site', params: { projectId: n.project_id } }
   return null
 }

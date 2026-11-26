@@ -23,8 +23,12 @@ import {
   type RefresherCustomEvent,
   toastController,
 } from '@ionic/vue'
-import { cloudDownloadOutline, cloudDoneOutline, mapOutline } from 'ionicons/icons'
-import type { Plan } from '@dash4/shared'
+import { businessOutline, cloudDownloadOutline, cloudDoneOutline, mapOutline } from 'ionicons/icons'
+import { ApiError, type Plan, type SiteProject } from '@dash4/shared'
+import { api } from '@/services/api'
+import { kv } from '@/offline/db'
+import { plain } from '@/offline/collection'
+import { useAuthStore } from '@/stores/auth'
 import { useSitesStore } from '@/stores/sites'
 import { useSyncStore } from '@/stores/sync'
 import { groupPlansByProject, isFileFresh, planPlace } from '@/utils/plans'
@@ -40,7 +44,26 @@ const groups = computed(() => groupPlansByProject(store.allPlans, query.value))
 const offline = (p: Plan) => isFileFresh(store.files, p)
 const missing = computed(() => store.allPlans.filter((p) => !offline(p)))
 
+// Technicien : ses chantiers (affecté ou avec une tâche), gardés pour le hors ligne
+const auth = useAuthStore()
+const siteProjects = ref<SiteProject[]>([])
+const shownSites = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return q ? siteProjects.value.filter((p) => [p.name, p.client, p.address].some((v) => v?.toLowerCase().includes(q))) : siteProjects.value
+})
+async function refreshSites(): Promise<void> {
+  if (!auth.isTechnician) return
+  try {
+    siteProjects.value = await api.sites.projects()
+    await kv.set('siteProjects', plain(siteProjects.value))
+  } catch (e) {
+    if (e instanceof ApiError && e.status !== 0 && e.status !== 503) return
+    siteProjects.value = (await kv.get<SiteProject[]>('siteProjects')) ?? siteProjects.value
+  }
+}
+
 async function refresh(): Promise<void> {
+  void refreshSites()
   error.value = null
   try {
     await store.refreshAllPlans()
@@ -101,6 +124,19 @@ async function keep(list: Plan[]): Promise<void> {
         <IonNote>Téléchargement {{ downloading.done }} / {{ downloading.total }}…</IonNote>
       </div>
 
+      <IonList v-if="shownSites.length" inset>
+        <IonListHeader><IonLabel>Mes chantiers</IonLabel></IonListHeader>
+        <IonItem v-for="p in shownSites" :key="p.id" :router-link="{ name: 'site', params: { projectId: p.id } }" detail>
+          <IonIcon slot="start" :icon="businessOutline" color="primary" />
+          <IonLabel class="ion-text-wrap">
+            <h3>{{ p.name }}</h3>
+            <p>{{ [p.client, p.address].filter(Boolean).join(' · ') }}</p>
+            <p>{{ p.plans_count }} plan{{ p.plans_count > 1 ? 's' : '' }}</p>
+          </IonLabel>
+          <IonBadge v-if="p.assigned" slot="end" color="primary">Affecté</IonBadge>
+        </IonItem>
+      </IonList>
+
       <IonList v-for="g in groups" :key="g.project.id" inset>
         <IonListHeader>
           <IonLabel>{{ g.project.name }}</IonLabel>
@@ -117,7 +153,7 @@ async function keep(list: Plan[]): Promise<void> {
         </IonItem>
       </IonList>
 
-      <div v-if="!groups.length" class="ion-padding ion-text-center">
+      <div v-if="!groups.length && !shownSites.length" class="ion-padding ion-text-center">
         <IonText color="medium">
           <p>{{ error ?? (query ? 'Aucun plan ne correspond.' : store.plansSyncing ? 'Chargement…' : 'Aucun plan sur vos chantiers.') }}</p>
         </IonText>
