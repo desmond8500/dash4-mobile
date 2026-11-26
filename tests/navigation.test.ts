@@ -31,6 +31,14 @@ describe('navigation mobile', () => {
   })
 })
 
+describe("documentation d'un article depuis le chantier", () => {
+  it("est ouverte au technicien qui voit le stock, contrairement à la fiche de l'article", () => {
+    const tech = state({ accountType: 'technician', canAny: (p: string[]) => p.includes('stock.view') })
+    expect(resolveNavigation(route('article-docs', { permissions: ['stock.view'] }), tech)).toBe(true)
+    expect(resolveNavigation(route('stock-article', { accountTypes: ['manager'], permissions: ['stock.view'] }), tech)).toEqual({ name: 'home' })
+  })
+})
+
 describe('onglets', () => {
   it('filtre les onglets par type de compte et par permission', () => {
     const original = [...TABS]

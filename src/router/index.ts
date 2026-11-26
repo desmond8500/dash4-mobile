@@ -248,6 +248,14 @@ export const router = createRouter({
           meta: { permissions: ['sites.view', 'sites.view.own'] },
         },
         {
+          // Documentation d'un article depuis un équipement du chantier (lecture, techniciens compris)
+          path: 'articles/:id(\\d+)/documentation',
+          name: 'article-docs',
+          component: () => import('@/views/stock/ArticleDocsPage.vue'),
+          props: true,
+          meta: { permissions: ['stock.view'] },
+        },
+        {
           path: 'chantier/:projectId(\\d+)/equipements/nouveau',
           name: 'equipment-new',
           component: () => import('@/views/sites/EquipmentFormPage.vue'),

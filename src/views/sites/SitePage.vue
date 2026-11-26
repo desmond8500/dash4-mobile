@@ -26,10 +26,13 @@ import {
   alertController,
   toastController,
   type RefresherCustomEvent,
+  IonIcon,
 } from '@ionic/vue'
+import { documentTextOutline } from 'ionicons/icons'
 import { EQUIPMENT_STATUSES, equipmentTotals, equipmentTree, placeLabel } from '@dash4/shared'
 import type { Equipment, InstalledSystem } from '@dash4/shared'
 import { useSitesStore } from '@/stores/sites'
+import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { equipmentMatches, statusColor } from '@/utils/sites'
 
@@ -84,6 +87,13 @@ async function progress(s: InstalledSystem): Promise<void> {
 }
 
 const router = useRouter()
+const auth = useAuthStore()
+const canStock = computed(() => auth.can('stock.view'))
+/** Documentation (documents, liens, notes) de l'article du stock lié à l'équipement. */
+function openArticleDocs(e: Equipment): void {
+  if (!e.article) return
+  void router.push({ name: 'article-docs', params: { id: e.article.id }, state: { articleName: e.article.designation } })
+}
 function edit(e: Equipment): void {
   void router.push({ name: 'equipment-edit', params: { projectId: id.value, equipmentId: e.id } })
 }
@@ -164,6 +174,9 @@ async function changeStatus(e: Equipment): Promise<void> {
                       <p>{{ [e.type, e.model, e.serial_number ? `N° ${e.serial_number}` : null].filter(Boolean).join(' · ') }}</p>
                       <p v-if="e.id < 0"><IonText color="medium">En attente d'envoi</IonText></p>
                       <p v-if="placeLabel(site, e.level_id, e.room_id)">{{ placeLabel(site, e.level_id, e.room_id) }}</p>
+                      <p v-if="e.article && canStock" class="article-doc">
+                        <a href="#" @click.prevent.stop="openArticleDocs(e)"><IonIcon :icon="documentTextOutline" /> {{ e.article.designation }} · documents, liens, notes</a>
+                      </p>
                       <p v-for="c in e.characteristics" :key="c.label" class="char" @click.stop="copy(c.value)">
                         <span>{{ c.label }} :</span> <strong>{{ c.value }}</strong>
                       </p>
@@ -202,6 +215,13 @@ async function changeStatus(e: Equipment): Promise<void> {
   --padding-start: 2rem;
 }
 
+.article-doc a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ion-color-primary);
+  text-decoration: none;
+}
 .char {
   font-family: ui-monospace, monospace;
 }
