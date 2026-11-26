@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countLabel, homeSearch, matches, quickActions } from '../src/utils/home'
+import { homeSearch, matches, quickActions } from '../src/utils/home'
 import type { Article, Client, Project, Quote } from '@dash4/shared'
 
 const client = { id: 1, name: 'Hôtel Téranga', phones: [{ number: '77 123 45 67' }] } as unknown as Client
@@ -34,14 +34,5 @@ describe('accueil', () => {
     const technician = quickActions('technician', (p) => p.some((x) => ['client_requests.create', 'journals.create', 'accounting.create.own', 'stock.view'].includes(x)))
     expect(technician.map((a) => a.key)).toEqual(['request', 'journal', 'expense'])
     expect(quickActions('manager', () => true).map((a) => a.key)).toEqual(['request', 'journal', 'scan', 'expense', 'client', 'clients'])
-  })
-})
-
-describe('tuiles « Mes rubriques »', () => {
-  it('écrit le nombre d\'éléments sous le nom de la rubrique', () => {
-    expect(countLabel(9, 'projet')).toBe('9 projets')
-    expect(countLabel(1, 'tâche à faire', 'tâches à faire')).toBe('1 tâche à faire')
-    expect(countLabel(0, 'client')).toBe('Aucun client')
-    expect(countLabel(undefined, 'client')).toBe('')
   })
 })

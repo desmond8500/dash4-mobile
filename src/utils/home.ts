@@ -101,10 +101,3 @@ export const QUICK_ACTIONS: QuickAction[] = [
 export function quickActions(accountType: 'manager' | 'technician', canAny: (p: string[]) => boolean, max = 6): QuickAction[] {
   return QUICK_ACTIONS.filter((a) => a.accountTypes.includes(accountType) && canAny(a.permissions)).slice(0, max)
 }
-
-/** « 1 élément », « 9 éléments », « Aucun élément » — sous le nom d'une tuile de l'accueil. */
-export function countLabel(count: number | null | undefined, singular: string, plural = `${singular}s`): string {
-  if (count === null || count === undefined) return ''
-  if (count === 0) return `Aucun ${singular}`
-  return `${count} ${count > 1 ? plural : singular}`
-}

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  IonBadge,
   IonCard,
   IonCardContent,
   IonCardHeader,
@@ -31,10 +30,7 @@ import { useClientsStore } from '@/stores/clients'
 import { useProjectsStore } from '@/stores/projects'
 import { useQuotesStore } from '@/stores/quotes'
 import { useStockStore } from '@/stores/stock'
-import { countLabel, homeSearch, quickActions, type QuickAction } from '@/utils/home'
-import { visibleTabs } from '@/tabs'
-import { useClientRequestsStore } from '@/stores/clientRequests'
-import { useMessagingStore } from '@/stores/messaging'
+import { homeSearch, quickActions, type QuickAction } from '@/utils/home'
 import { hours, nextDays, sortForDay, taskColor } from '@/utils/tasks'
 import { scannerSupported } from '@/utils/stock'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
@@ -54,8 +50,6 @@ import { isOnDay, isoDay } from '@/utils/tasks'
 
 
 const auth = useAuthStore()
-const requestsStore = useClientRequestsStore()
-const messaging = useMessagingStore()
 const sync = useSyncStore()
 const invoices = useInvoicesStore()
 const fleet = useFleetStore()
@@ -79,34 +73,6 @@ const projects = useProjectsStore()
 const quotes = useQuotesStore()
 const stock = useStockStore()
 
-/** Tuiles « Mes rubriques » : chaque rubrique que le compte peut ouvrir, avec son nombre d'éléments. */
-const sections = computed(() => {
-  const user = auth.user
-  if (!user) return []
-  const counts: Record<string, string> = {
-    tasks: countLabel(tasks.openMineCount, 'tâche à faire', 'tâches à faire'),
-    'client-requests': countLabel(requestsStore.openCount, 'demande ouverte', 'demandes ouvertes'),
-    clients: countLabel(clients.clients.length, 'client'),
-    projects: countLabel(projects.items.length, 'projet'),
-    stock: countLabel(stock.items.length, 'article'),
-    invoices: countLabel(invoices.summary.unpaidCount, 'à encaisser', 'à encaisser'),
-    vehicles: countLabel(fleet.visible.length, 'véhicule'),
-    messages: messaging.unread ? countLabel(messaging.unread, 'non lu', 'non lus') : 'Discussions',
-    journals: "Rapports d'intervention",
-    'tech-space': 'Informations et accès',
-    plans: 'Plans des chantiers',
-    expenses: 'Notes de frais',
-    profile: 'Compte et préférences',
-  }
-  const alerts: Record<string, boolean> = {
-    'client-requests': requestsStore.openCount > 0,
-    messages: messaging.unread > 0,
-    invoices: invoices.summary.overdueCount > 0,
-  }
-  return visibleTabs(user.account_type.value, auth.canAny)
-    .filter((t) => t.name !== 'home')
-    .map((t) => ({ ...t, count: counts[t.name] ?? '', alert: !!alerts[t.name] }))
-})
 const query = ref('')
 const results = computed(() =>
   homeSearch(query.value, {
@@ -230,17 +196,6 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
         </button>
       </div>
 
-      <!-- Mes rubriques, en tuiles -->
-      <h3 class="section-title">Mes rubriques</h3>
-      <div class="tiles">
-        <button v-for="t in sections" :key="t.name" type="button" class="tile" @click="ionRouter.push({ name: t.name })">
-          <span v-if="t.alert" class="tile-alert" aria-hidden="true"><IonBadge color="danger">!</IonBadge></span>
-          <IonIcon :icon="t.icon" aria-hidden="true" />
-          <span class="tile-label">{{ t.label }}</span>
-          <span class="tile-count">{{ t.count }}</span>
-        </button>
-      </div>
-
       <!-- Planning de la semaine -->
       <IonCard v-if="tasks.allowed()">
         <IonCardHeader class="planning-head">
@@ -349,12 +304,6 @@ async function onRefresh(event: RefresherCustomEvent): Promise<void> {
 </template>
 
 <style scoped>
-.section-title {
-  margin: 1rem 0 0.25rem;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--ion-color-primary);
-}
 .hit-thumb {
   --size: 40px;
   --border-radius: 6px;
