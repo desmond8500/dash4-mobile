@@ -40,6 +40,7 @@ import SearchSelect from '@/components/SearchSelect.vue'
 import {
   addParticipant,
   buildJournalPayload,
+  duplicateJournalForm,
   journalProjectOptions,
   journalToForm,
   newJournalForm,
@@ -123,6 +124,12 @@ onMounted(async () => {
     editing.value = journal
     form.value = journalToForm(journal)
     withPosition.value = journal.latitude !== null
+    return
+  }
+  // Dupliquer un rapport : mêmes projet, intervenants et sections, date du jour
+  const source = store.find(Number(route.query.from))
+  if (source) {
+    form.value = duplicateJournalForm(source, todayIso())
     return
   }
   // Nouveau rapport : l'auteur est intervenant d'office ; depuis une tâche, son projet et ses intervenants
@@ -276,6 +283,13 @@ async function save(): Promise<void> {
             </IonSelect>
           </IonItem>
           <IonItem><IonInput v-model="form.date" type="date" label="Date" label-placement="stacked" :max="todayIso()" /></IonItem>
+          <IonItem>
+            <div class="hours">
+              <IonInput v-model="form.startTime" type="time" label="Début" label-placement="stacked" />
+              <IonInput v-model="form.endTime" type="time" label="Fin" label-placement="stacked" />
+            </div>
+          </IonItem>
+          <IonItem><IonTextarea v-model="form.summary" label="Résumé (en tête du PDF)" label-placement="stacked" :auto-grow="true" placeholder="En une ou deux phrases" /></IonItem>
         </IonList>
 
         <IonList inset>
@@ -374,6 +388,13 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.hours {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
 .photos {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

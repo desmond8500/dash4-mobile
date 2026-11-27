@@ -17,7 +17,15 @@ import {
   IonText,
   IonTitle,
   IonToolbar,
+  IonIcon,
+  actionSheetController,
+  alertController,
+  toastController,
+  useIonRouter,
 } from '@ionic/vue'
+import { ellipsisHorizontal, locationOutline, mailOutline } from 'ionicons/icons'
+import { journalHours } from '@/utils/journals'
+import { useAuthStore } from '@/stores/auth'
 import CommentsSection from '@/components/CommentsSection.vue'
 import { openPhotos } from '@/utils/lightbox'
 import type { Document } from '@dash4/shared'
@@ -43,6 +51,59 @@ async function thumbs(docs: Document[]): Promise<Array<{ name: string; url: stri
   return out
 }
 
+const auth = useAuthStore()
+const ionRouter = useIonRouter()
+const hours = computed(() => (journal.value ? journalHours(journal.value.starts_at, journal.value.ends_at) : null))
+const mapUrl = computed(() => (journal.value?.latitude != null ? `https://www.google.com/maps?q=${journal.value.latitude},${journal.value.longitude}` : null))
+const sentAt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '')
+
+async function toast(message: string, color = 'dark'): Promise<void> {
+  const t = await toastController.create({ message, duration: 2200, position: 'top', color })
+  await t.present()
+}
+
+async function openPdf(): Promise<void> {
+  if (!journal.value) return
+  if (!sync.online) return void toast('Le PDF du rapport demande le réseau.', 'warning')
+  try {
+    const url = URL.createObjectURL(await api.journals.pdf(journal.value.id))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    void toast((e as Error).message, 'danger')
+  }
+}
+
+async function remove(): Promise<void> {
+  const j = journal.value
+  if (!j) return
+  const alert = await alertController.create({
+    header: 'Supprimer le rapport',
+    message: `« ${j.title} » sera mis à la corbeille, avec ses photos.`,
+    buttons: [{ text: 'Annuler', role: 'cancel' }, { text: 'Supprimer', role: 'destructive' }],
+  })
+  await alert.present()
+  if ((await alert.onDidDismiss()).role !== 'destructive') return
+  await store.remove(j)
+  void toast(sync.online ? 'Rapport supprimé.' : 'Rapport supprimé : envoyé au retour du réseau.')
+  ionRouter.navigate('/rapports', 'back', 'pop')
+}
+
+/** Actions du rapport selon les droits. */
+async function actions(): Promise<void> {
+  const j = journal.value
+  if (!j) return
+  const buttons: Array<{ text: string; role?: string; handler?: () => void }> = []
+  if (j.can.update) buttons.push({ text: 'Modifier', handler: () => ionRouter.push(`/rapports/${j.id}/modifier`) })
+  if (j.can.update) buttons.push({ text: 'Envoyer par e-mail', handler: () => ionRouter.push(`/rapports/${j.id}/envoyer`) })
+  buttons.push({ text: 'Ouvrir le PDF', handler: () => void openPdf() })
+  if (auth.can('journals.create')) buttons.push({ text: 'Dupliquer (nouveau rapport)', handler: () => ionRouter.push(`/rapports/nouveau?from=${j.id}`) })
+  if (j.can.delete) buttons.push({ text: 'Supprimer', role: 'destructive', handler: () => void remove() })
+  buttons.push({ text: 'Fermer', role: 'cancel' })
+  const sheet = await actionSheetController.create({ header: j.title, buttons })
+  await sheet.present()
+}
+
 onMounted(async () => {
   await store.load()
   if (!sync.online || !journal.value) return
@@ -60,8 +121,9 @@ onMounted(async () => {
       <IonToolbar>
         <IonButtons slot="start"><IonBackButton default-href="/rapports" text="Retour" /></IonButtons>
         <IonTitle>{{ journal?.title ?? 'Rapport' }}</IonTitle>
-        <IonButtons v-if="journal?.can.update" slot="end">
-          <IonButton :router-link="{ name: 'journal-edit', params: { id: journal.id } }">Modifier</IonButton>
+        <IonButtons v-if="journal" slot="end">
+          <IonButton v-if="journal.can.update" :router-link="{ name: 'journal-edit', params: { id: journal.id } }">Modifier</IonButton>
+          <IonButton aria-label="Actions" @click="actions"><IonIcon slot="icon-only" :icon="ellipsisHorizontal" /></IonButton>
         </IonButtons>
       </IonToolbar>
     </IonHeader>
@@ -77,6 +139,15 @@ onMounted(async () => {
           <IonItem v-if="journal.project"><IonLabel>Projet</IonLabel><IonNote slot="end">{{ journal.project.name }}</IonNote></IonItem>
           <IonItem v-if="journal.client"><IonLabel>Client</IonLabel><IonNote slot="end">{{ journal.client.name }}</IonNote></IonItem>
           <IonItem v-if="journal.task"><IonLabel>Tâche</IonLabel><IonNote slot="end">{{ journal.task.title }}</IonNote></IonItem>
+          <IonItem v-if="hours"><IonLabel>Horaires</IonLabel><IonNote slot="end">{{ hours }}</IonNote></IonItem>
+          <IonItem v-if="journal.creator"><IonLabel>Rédigé par</IonLabel><IonNote slot="end">{{ journal.creator.full_name }}</IonNote></IonItem>
+          <IonItem v-if="mapUrl" :href="mapUrl" target="_blank" detail>
+            <IonIcon slot="start" :icon="locationOutline" color="medium" /><IonLabel>Position de l'intervention</IonLabel>
+          </IonItem>
+        </IonList>
+        <IonList v-if="journal.summary" inset>
+          <IonListHeader><IonLabel>Résumé</IonLabel></IonListHeader>
+          <IonItem><IonLabel class="ion-text-wrap"><MarkdownView :text="journal.summary" /></IonLabel></IonItem>
         </IonList>
         <IonList v-if="journal.participants?.length" inset>
           <IonListHeader><IonLabel>Intervenants</IonLabel></IonListHeader>
@@ -97,6 +168,13 @@ onMounted(async () => {
           <img v-for="p in photos" :key="p.url" :src="p.url" :alt="p.name" @click="openPhotos(photos, p.url)" />
         </div>
         <p v-else-if="store.photosWaiting(journal.client_uuid, journal.id)" class="ion-padding"><IonNote>{{ store.photosWaiting(journal.client_uuid, journal.id) }} photo(s) en attente d'envoi.</IonNote></p>
+        <IonList v-if="journal.emails?.length" inset>
+          <IonListHeader><IonLabel>Envois par e-mail</IonLabel></IonListHeader>
+          <IonItem v-for="e in journal.emails" :key="e.id">
+            <IonIcon slot="start" :icon="mailOutline" color="medium" />
+            <IonLabel class="ion-text-wrap"><h3>{{ e.to.join(', ') }}</h3><p>{{ [sentAt(e.sent_at), e.sender?.full_name].filter(Boolean).join(' · ') }}</p></IonLabel>
+          </IonItem>
+        </IonList>
         <CommentsSection type="journals" :id="journal.id" />
       </template>
     </IonContent>

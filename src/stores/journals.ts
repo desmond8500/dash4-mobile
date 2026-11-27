@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { ApiError, type Assignee, type Journal, type JournalPayload } from '@dash4/shared'
+import { ApiError, type Assignee, type Journal, type JournalPayload, type QuoteEmailPayload } from '@dash4/shared'
 import { api } from '@/services/api'
 import { kv, onWipe } from '@/offline/db'
 import { mergeChanges, pendingCreations, plain } from '@/offline/collection'
@@ -153,6 +153,24 @@ export const useJournalsStore = defineStore('journals', () => {
     }
   }
 
+  /** Mise à la corbeille : retirée tout de suite du téléphone, envoyée dès que possible. */
+  async function remove(journal: Journal): Promise<void> {
+    await sync.enqueue({ type: 'journal-delete', label: `Rapport supprimé : ${journal.title}`, method: 'DELETE', path: `journals/${journal.id}`, payload: {} })
+    items.value = items.value.filter((j) => j.id !== journal.id)
+    await kv.set(ITEMS_KEY, plain(items.value))
+  }
+
+  /** Envoi par e-mail avec le PDF : part maintenant ou au retour du réseau. */
+  async function sendEmail(journal: Journal, payload: QuoteEmailPayload): Promise<void> {
+    await sync.enqueue({
+      type: 'journal-send',
+      label: `Rapport envoyé à ${payload.to.join(', ')} : ${journal.title}`,
+      method: 'POST',
+      path: `journals/${journal.id}/send`,
+      payload: plain(payload) as unknown as Record<string, unknown>,
+    })
+  }
+
   /** Équipe à jour si le réseau est là, sinon la dernière liste gardée. */
   async function loadTeam(): Promise<Assignee[]> {
     await load()
@@ -181,5 +199,5 @@ export const useJournalsStore = defineStore('journals', () => {
   sync.onFlushed(() => void refresh().catch(() => undefined))
   onWipe(reset)
 
-  return { items, sorted, pending, syncedAt, loaded, syncing, team, allowed, load, refresh, create, update, loadTeam, find, photosWaiting, reset }
+  return { items, sorted, pending, syncedAt, loaded, syncing, team, allowed, load, refresh, create, update, remove, sendEmail, loadTeam, find, photosWaiting, reset }
 })

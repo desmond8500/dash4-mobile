@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { visibleTabs } from '../src/tabs'
+import { matches } from '../src/utils/home'
+import { addEmails, isEmail } from '../src/utils/emails'
 import {
   addParticipant,
   applyJournalChanges,
   buildJournalPayload,
+  duplicateJournalForm,
+  filterJournals,
+  groupJournalsByMonth,
+  journalHours,
   journalProjectOptions,
   journalToForm,
   newJournalForm,
@@ -49,6 +55,9 @@ describe('rapports d\'intervention sur le téléphone', () => {
         { title: 'Observations', body: 'Câble à protéger' },
       ],
       participants: [{ user_id: 3, role: null }, { name: 'Électricien du client', role: 'Sous-traitant' }],
+      starts_at: null,
+      ends_at: null,
+      summary: null,
       latitude: 14.7167,
       longitude: -17.4677,
     })
@@ -111,5 +120,42 @@ describe('photos des sections', () => {
     expect(photoTarget(j, null)).toEqual({ type: 'journals', id: 9 })
     expect(photoTarget(j, 5)).toEqual({ type: 'journals', id: 9 })
     expect(normalizePendingPhotos({ a: 2, b: [0, null] })).toEqual({ a: [null, null], b: [0, null] })
+  })
+})
+
+describe('gestion des rapports', () => {
+  it('envoie les horaires et le résumé, et refuse une fin avant le début', () => {
+    const f = { ...newJournalForm('2026-11-19'), title: 'Pose', projectId: 7, startTime: '08:30', endTime: '12:15', summary: ' Caméras posées ' }
+    f.sections[0]!.body = 'Fait'
+    expect(buildJournalPayload(f, '2026-11-19').payload).toMatchObject({ starts_at: '2026-11-19 08:30', ends_at: '2026-11-19 12:15', summary: 'Caméras posées' })
+    expect(buildJournalPayload({ ...f, endTime: '08:00' }, '2026-11-19').error).toBe("L'heure de fin doit être après l'heure de début.")
+    expect(journalHours('2026-11-19 08:30:00', '2026-11-19 12:15:00')).toBe('08:30 – 12:15 (3 h 45)')
+    expect(journalHours(null, null)).toBeNull()
+    expect(journalToForm({ ...journal, starts_at: '2026-11-18 09:05:00', ends_at: null, summary: 'R' } as Journal)).toMatchObject({ startTime: '09:05', endTime: '', summary: 'R' })
+  })
+
+  it('duplique un rapport sans ses identifiants, ses photos ni sa position', () => {
+    const copy = duplicateJournalForm({ ...journal, latitude: 14.7, longitude: -17.4, starts_at: '2026-11-18 09:00:00' } as Journal, '2026-11-27')
+    expect(copy).toMatchObject({ title: 'Visite', date: '2026-11-27', projectId: 7, latitude: null, startTime: '' })
+    expect(copy.sections.every((s) => s.id === undefined)).toBe(true)
+    expect(copy.sections[0]).toMatchObject({ title: 'Constat', body: 'Porte forcée' })
+    expect(copy.participants.map((p) => p.user_id)).toEqual([3])
+  })
+
+  it('filtre (les miens, type, projet, recherche) et regroupe par mois', () => {
+    const j = (id: number, extra: Partial<Journal>) => ({ ...journal, id, created_by: 1, participants: [], ...extra }) as Journal
+    const list = [j(1, { date: '2026-11-20' }), j(2, { date: '2026-11-02', created_by: 5, participants: [{ user_id: 2 } as never] }), j(3, { date: '2026-10-30', type: { value: 'maintenance', label: 'Maintenance' }, project_id: 8 })]
+    const f = { mine: false, type: null, projectId: null, query: '' }
+    const ids = (r: Journal[]) => r.map((x) => x.id)
+    expect(ids(filterJournals(list, { ...f, mine: true }, 2, matches))).toEqual([2])
+    expect(ids(filterJournals(list, { ...f, type: 'maintenance' }, 2, matches))).toEqual([3])
+    expect(ids(filterJournals(list, { ...f, projectId: 7 }, 2, matches))).toEqual([1, 2])
+    expect(ids(filterJournals(list, { ...f, query: 'maint' }, 2, matches))).toEqual([3])
+    expect(groupJournalsByMonth(list).map((g) => [g.label, ids(g.items)])).toEqual([['Novembre 2026', [1, 2]], ['Octobre 2026', [3]]])
+  })
+
+  it('ajoute les adresses tapées sans doublon', () => {
+    expect(addEmails(['a@b.sn'], 'A@b.sn, c@d.sn; faux')).toEqual(['a@b.sn', 'c@d.sn'])
+    expect(isEmail('x@y')).toBe(false)
   })
 })

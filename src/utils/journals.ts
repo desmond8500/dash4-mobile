@@ -32,6 +32,10 @@ export interface JournalForm {
   participants: ParticipantDraft[]
   latitude: number | null
   longitude: number | null
+  /** « HH:MM » ou vide. */
+  startTime: string
+  endTime: string
+  summary: string
 }
 
 let seq = 0
@@ -49,8 +53,13 @@ export function newJournalForm(today: string): JournalForm {
     participants: [],
     latitude: null,
     longitude: null,
+    startTime: '',
+    endTime: '',
+    summary: '',
   }
 }
+
+const hhmm = (v: string | null) => (v ? (v.match(/(\d{2}):(\d{2})/)?.[0] ?? '') : '')
 
 /** Formulaire pré-rempli pour modifier un rapport : ses sections (et les habituelles qui manquent), ses intervenants. */
 export function journalToForm(journal: Journal): JournalForm {
@@ -70,6 +79,9 @@ export function journalToForm(journal: Journal): JournalForm {
     })),
     latitude: journal.latitude,
     longitude: journal.longitude,
+    startTime: hhmm(journal.starts_at),
+    endTime: hhmm(journal.ends_at),
+    summary: journal.summary ?? '',
   }
 }
 
@@ -95,6 +107,7 @@ export function buildJournalPayload(form: JournalForm, today: string): { payload
   const sent = form.sections.filter((s) => s.id || s.body.trim())
   if (!sent.some((s) => s.body.trim())) return { error: 'Décrivez au moins les travaux réalisés.' }
   if (sent.some((s) => !s.title.trim())) return { error: 'Chaque section a besoin d\'un titre.' }
+  if (form.startTime && form.endTime && form.endTime <= form.startTime) return { error: "L'heure de fin doit être après l'heure de début." }
 
   const participants: JournalParticipantPayload[] = form.participants.map((p) => ({
     ...(p.user_id ? { user_id: p.user_id } : p.contact_id ? { contact_id: p.contact_id } : { name: p.name.trim() }),
@@ -110,6 +123,9 @@ export function buildJournalPayload(form: JournalForm, today: string): { payload
       ...(form.taskId ? { task_id: form.taskId } : {}),
       sections: sent.map((s) => ({ ...(s.id ? { id: s.id } : {}), title: s.title.trim(), body: s.body.trim() })),
       participants,
+      starts_at: form.startTime ? `${form.date} ${form.startTime}` : null,
+      ends_at: form.endTime ? `${form.date} ${form.endTime}` : null,
+      summary: form.summary.trim() || null,
       ...(form.latitude !== null && form.longitude !== null ? { latitude: form.latitude, longitude: form.longitude } : {}),
     },
   }
@@ -164,6 +180,9 @@ export function applyJournalChanges(journal: Journal, payload: JournalPayload, p
     title: payload.title ?? journal.title,
     type: payload.type ? { ...journal.type, value: payload.type } : journal.type,
     date: payload.date ?? journal.date,
+    starts_at: payload.starts_at !== undefined ? payload.starts_at : journal.starts_at,
+    ends_at: payload.ends_at !== undefined ? payload.ends_at : journal.ends_at,
+    summary: payload.summary !== undefined ? payload.summary : journal.summary,
     project_id: payload.project_id ?? journal.project_id,
     project: project ?? journal.project,
     sections: payload.sections
@@ -173,4 +192,67 @@ export function applyJournalChanges(journal: Journal, payload: JournalPayload, p
         })
       : journal.sections,
   }
+}
+
+/**
+ * Nouveau rapport à partir d'un autre (intervention suivante sur le même chantier) :
+ * même type, projet, tâche et intervenants ; sections reprises sans leurs photos ; date du jour, sans position.
+ */
+export function duplicateJournalForm(journal: Journal, today: string): JournalForm {
+  const form = journalToForm(journal)
+  return {
+    ...form,
+    title: journal.title,
+    date: today,
+    latitude: null,
+    longitude: null,
+    startTime: '',
+    endTime: '',
+    sections: form.sections.map((s) => ({ key: nextKey('s'), title: s.title, body: s.body })),
+    participants: form.participants.map((p) => ({ ...p, key: nextKey('p') })),
+  }
+}
+
+export interface JournalFilters {
+  mine: boolean
+  type: JournalType | null
+  projectId: number | null
+  query: string
+}
+
+/** Rapports filtrés : les miens (auteur ou intervenant), par type, par projet, par recherche. */
+export function filterJournals(list: Journal[], f: JournalFilters, userId: number | null, matches: (q: string, ...t: Array<string | null | undefined>) => boolean): Journal[] {
+  return list.filter(
+    (j) =>
+      (!f.mine || j.created_by === userId || (j.participants ?? []).some((p) => p.user_id === userId)) &&
+      (!f.type || j.type.value === f.type) &&
+      (!f.projectId || j.project_id === f.projectId) &&
+      (!f.query.trim() || matches(f.query, j.title, j.type.label, j.project?.name, j.client?.name, j.task?.title, j.summary, ...(j.participants ?? []).map((p) => p.name))),
+  )
+}
+
+/** Rapports regroupés par mois (« novembre 2026 »), dans l'ordre reçu. */
+export function groupJournalsByMonth(list: Journal[]): Array<{ key: string; label: string; items: Journal[] }> {
+  const groups: Array<{ key: string; label: string; items: Journal[] }> = []
+  for (const j of list) {
+    const key = (j.date ?? '').slice(0, 7) || 'sans-date'
+    const label = key === 'sans-date' ? 'Sans date' : new Date(`${key}-01T00:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    const last = groups[groups.length - 1]
+    if (last?.key === key) last.items.push(j)
+    else groups.push({ key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [j] })
+  }
+  return groups
+}
+
+/** Horaires « 08:30 – 12:15 (3 h 45) ». */
+export function journalHours(startsAt: string | null, endsAt: string | null): string | null {
+  const time = (v: string | null) => (v ? (v.match(/(\d{2}):(\d{2})/)?.[0] ?? null) : null)
+  const a = time(startsAt)
+  const b = time(endsAt)
+  if (!a && !b) return null
+  if (!a || !b) return a ?? b
+  const minutes = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5))
+  const d = minutes(b) - minutes(a)
+  if (d <= 0) return `${a} – ${b}`
+  return `${a} – ${b} (${Math.floor(d / 60)} h ${String(d % 60).padStart(2, '0')})`
 }
