@@ -141,7 +141,7 @@ onMounted(async () => {
             <IonLabel class="ion-text-wrap">
               <h1>{{ quote.number }}</h1>
               <h2>{{ quote.title }}</h2>
-              <p>{{ quote.client?.name }}<template v-if="quote.project"> · {{ quote.project.name }}</template></p>
+              <p>{{ quote.client_name || quote.client?.name }}<template v-if="quote.project"> · {{ quote.project.name }}</template></p>
             </IonLabel>
             <IonBadge slot="end" :color="quoteStatusColor(quote.status.value)">{{ quote.status.label }}</IonBadge>
           </IonItem>
